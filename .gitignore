@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+# Secrets & captured account data — never commit
+recon/.env
+recon/captures/
+*.env

@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Sign in with your Kohler Konnect account (the same email and password you use in the Konnect app).",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password.",
+      "cannot_connect": "Could not reach the Kohler cloud. Try again.",
+      "no_device": "No Sensate faucet was found on this account."
+    },
+    "abort": {
+      "already_configured": "This faucet is already set up."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Dispense water",
+      "description": "Dispense a measured amount of water from the Sensate faucet.",
+      "fields": {
+        "amount_ml": {
+          "name": "Amount (mL)",
+          "description": "How much to dispense, in milliliters."
+        },
+        "amount_l": {
+          "name": "Amount (L)",
+          "description": "How much to dispense, in liters (use this OR the mL field)."
+        }
+      }
+    }
+  }
+}
