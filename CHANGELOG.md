@@ -4,7 +4,7 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
-## Unreleased
+## 0.3.0
 
 ### Changed
 
