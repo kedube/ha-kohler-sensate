@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "El preajuste \"{title}\" está fuera del rango de 10 mL a 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} no tiene ningún preajuste llamado \"{preset}\". Sus preajustes: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Dispensar agua",
-      "description": "Dispensa una cantidad medida de agua de un grifo Sensate.",
+      "description": "Dispensa una cantidad medida de agua, o un preajuste de Konnect, de un grifo Sensate.",
       "fields": {
         "device_id": {
           "name": "Grifo",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Unidad",
           "description": "Unidad de la cantidad. Por defecto mL en métrico y fl oz en imperial, según las opciones de la integración."
+        },
+        "preset": {
+          "name": "Preajuste",
+          "description": "Un preajuste guardado en la app Konnect, con su nombre en la lista Preajuste. Úsalo en lugar de cantidad."
         },
         "amount_ml": {
           "name": "Cantidad (mL)",

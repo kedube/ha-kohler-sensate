@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import date, datetime, timedelta
 from functools import partial
 import hashlib
@@ -105,6 +105,18 @@ def _water_running(state: dict[str, Any]) -> bool | None:
     if status.lower() in STATUS_OFF:
         return False
     return None
+
+
+def preset_labels(presets: Iterable[SensatePreset]) -> dict[str, SensatePreset]:
+    """Each preset by a distinct name; repeats get " (2)", " (3)" and so on."""
+    labels: dict[str, SensatePreset] = {}
+    for preset in presets:
+        label, n = preset.title, 1
+        while label in labels:
+            n += 1
+            label = f"{preset.title} ({n})"
+        labels[label] = preset
+    return labels
 
 
 def _push_signature(state: dict[str, Any]) -> tuple[bool | None, bool]:
@@ -675,6 +687,21 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 and now - self._dispense_started < limit
             )
             or (self._preset_since is not None and now - self._preset_since < limit)
+        )
+
+    @property
+    def preset_options(self) -> dict[str, SensatePreset]:
+        """Presets by the names the Preset select and the action use."""
+        return preset_labels(self.presets.values())
+
+    def find_preset(self, name: str) -> SensatePreset | None:
+        """The preset called ``name``, ignoring case if nothing matches exactly."""
+        options = self.preset_options
+        if (preset := options.get(name)) is not None:
+            return preset
+        wanted = name.casefold()
+        return next(
+            (p for label, p in options.items() if label.casefold() == wanted), None
         )
 
     @property

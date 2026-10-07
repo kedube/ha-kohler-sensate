@@ -27,7 +27,7 @@ directly, signing in with your normal Konnect email and password.
   - Imperial: ¼ cup, ½ cup, 1 cup, 2 cups, 1 quart, ½ gallon, 1 gallon
 - **Any amount**: a *Dispense amount* number plus a *Dispense set amount*
   button, and the `kohler_sensate.dispense` action for automations, scripts
-  and voice.
+  and voice, which also dispenses presets by name.
 - **Metric or imperial**: chosen per faucet in the integration options.
 - **Water usage**: a lifetime total and today's use, as Kohler counts them,
   ready for Home Assistant's Energy dashboard.
@@ -185,18 +185,21 @@ unavailable. *Leak*, *Clear leak alert*, *Dispense amount*, *Preset*,
 
 ### `kohler_sensate.dispense`
 
-Dispenses a measured amount of water. Every dispense must be between 10 mL
-and 4 L.
+Dispenses a measured amount of water, or a preset saved in the Konnect app.
+Every dispense must be between 10 mL and 4 L.
 
 | Field       | Required | Description |
 | ----------- | -------- | ----------- |
 | `amount`    | Yes\*    | How much to dispense, in `unit`. |
 | `unit`      | No       | `ml`, `l`, `fl_oz`, `cup`, `qt` or `gal`. Defaults to `ml` (metric) or `fl_oz` (imperial), per the faucet's options. |
+| `preset`    | Yes\*    | A preset's name, as the *Preset* dropdown lists it (for example `One Cup (2)` for a second "One Cup"). Case doesn't matter. |
 | `device_id` | No\*\*   | The faucet to use. |
 | `amount_ml` | No       | Legacy: amount in mL, instead of `amount`. |
 | `amount_l`  | No       | Legacy: amount in liters, instead of `amount`. |
 
-\* Give exactly one of `amount`, `amount_ml` or `amount_l`.
+\* Give exactly one of `amount`, `preset`, `amount_ml` or `amount_l`. An
+unknown preset is refused with a list of the faucet's presets, and nothing is
+dispensed; with several faucets, each must have it.
 \*\* Required when more than one faucet is set up. The action won't guess
 and run water at every faucet.
 
@@ -215,6 +218,13 @@ data:
   device_id: 0123456789abcdef0123456789abcdef
   amount: 2
   unit: cup
+```
+
+```yaml
+# A preset saved in the Konnect app
+action: kohler_sensate.dispense
+data:
+  preset: A Glass of Water
 ```
 
 ### Examples
@@ -316,18 +326,13 @@ amount using the same command as the other dispense buttons. The dropdown's
 - Presets added, renamed or deleted in the app show up within 5 minutes. A
   faucet without presets gets neither entity until the first one is saved.
 
-In an automation or script, choose the preset, then press the button:
+In an automation or script, dispense a preset by name with the
+[`kohler_sensate.dispense`](#kohler_sensatedispense) action:
 
 ```yaml
-actions:
-  - action: select.select_option
-    target:
-      entity_id: select.kitchen_preset
-    data:
-      option: A Glass of Water
-  - action: button.press
-    target:
-      entity_id: button.kitchen_dispense_preset
+action: kohler_sensate.dispense
+data:
+  preset: A Glass of Water
 ```
 
 ### Water usage and the Energy dashboard
@@ -434,8 +439,9 @@ account's notification devices; deleting the faucet doesn't remove it.
 
 - The *Preset: name* buttons are replaced by the *Preset* dropdown and one
   *Dispense preset* button, and the old buttons are removed. Update
-  dashboards, automations and scripts that pressed them; see
-  [Konnect presets](#konnect-presets) for an example.
+  dashboards that showed them. In automations and scripts, use the
+  `kohler_sensate.dispense` action with `preset:` instead; see
+  [Konnect presets](#konnect-presets).
 
 ### From 0.3
 

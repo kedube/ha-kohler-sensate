@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "Die Voreinstellung „{title}“ liegt außerhalb des Dosierbereichs von 10 mL bis 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} hat keine Voreinstellung namens „{preset}“. Vorhandene Voreinstellungen: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Wasser dosieren",
-      "description": "Gibt eine abgemessene Menge Wasser aus einer Sensate-Armatur aus.",
+      "description": "Gibt eine abgemessene Menge Wasser oder eine Konnect-Voreinstellung aus einer Sensate-Armatur aus.",
       "fields": {
         "device_id": {
           "name": "Armatur",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Einheit",
           "description": "Einheit der Menge. Standard ist mL bei metrischen und fl oz bei imperialen Einheiten, gemäß den Optionen der Integration."
+        },
+        "preset": {
+          "name": "Voreinstellung",
+          "description": "Eine in der Konnect-App gespeicherte Voreinstellung, mit ihrem Namen aus der Auswahl „Voreinstellung“. Alternative zu „Menge“."
         },
         "amount_ml": {
           "name": "Menge (mL)",

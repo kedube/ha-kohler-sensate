@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "De voorinstelling \"{title}\" valt buiten het doseerbereik van 10 mL tot 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} heeft geen voorinstelling met de naam \"{preset}\". Beschikbare voorinstellingen: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Water doseren",
-      "description": "Doseert een afgemeten hoeveelheid water uit een Sensate-kraan.",
+      "description": "Doseert een afgemeten hoeveelheid water, of een Konnect-voorinstelling, uit een Sensate-kraan.",
       "fields": {
         "device_id": {
           "name": "Kraan",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Eenheid",
           "description": "Eenheid van de hoeveelheid. Standaard mL bij metrisch en fl oz bij imperiaal, volgens de opties van de integratie."
+        },
+        "preset": {
+          "name": "Voorinstelling",
+          "description": "Een voorinstelling uit de Konnect-app, met de naam uit de lijst Voorinstelling. Gebruik dit in plaats van Hoeveelheid."
         },
         "amount_ml": {
           "name": "Hoeveelheid (mL)",

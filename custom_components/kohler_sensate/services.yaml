@@ -27,6 +27,11 @@ dispense:
             - cup
             - qt
             - gal
+    preset:
+      required: false
+      example: A Glass of Water
+      selector:
+        text:
     amount_ml:
       required: false
       advanced: true

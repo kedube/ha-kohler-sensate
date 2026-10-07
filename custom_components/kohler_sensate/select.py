@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
@@ -33,18 +32,6 @@ async def async_setup_entry(
     )
 
 
-def preset_labels(presets: Iterable[SensatePreset]) -> dict[str, SensatePreset]:
-    """Each preset by a distinct name; repeats get " (2)", " (3)" and so on."""
-    labels: dict[str, SensatePreset] = {}
-    for preset in presets:
-        label, n = preset.title, 1
-        while label in labels:
-            n += 1
-            label = f"{preset.title} ({n})"
-        labels[label] = preset
-    return labels
-
-
 class SensatePresetSelect(SensateEntity, SelectEntity, RestoreEntity):
     """Which Konnect preset the "Dispense preset" button pours.
 
@@ -70,7 +57,7 @@ class SensatePresetSelect(SensateEntity, SelectEntity, RestoreEntity):
 
     @property
     def _labels(self) -> dict[str, SensatePreset]:
-        return preset_labels(self.coordinator.presets.values())
+        return self.coordinator.preset_options
 
     @property
     def available(self) -> bool:

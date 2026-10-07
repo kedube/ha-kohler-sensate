@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "Ustawienie wstępne „{title}” wykracza poza zakres nalewania od 10 mL do 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} nie ma ustawienia wstępnego o nazwie „{preset}”. Dostępne ustawienia: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Nalej wodę",
-      "description": "Nalewa odmierzoną ilość wody z kranu Sensate.",
+      "description": "Nalewa odmierzoną ilość wody z kranu Sensate albo ilość z ustawienia wstępnego Konnect.",
       "fields": {
         "device_id": {
           "name": "Kran",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Jednostka",
           "description": "Jednostka ilości. Domyślnie mL dla jednostek metrycznych i fl oz dla imperialnych, zgodnie z opcjami integracji."
+        },
+        "preset": {
+          "name": "Ustawienie wstępne",
+          "description": "Ustawienie wstępne zapisane w aplikacji Konnect, o nazwie z listy Ustawienie wstępne. Używaj zamiast pola Ilość."
         },
         "amount_ml": {
           "name": "Ilość (mL)",

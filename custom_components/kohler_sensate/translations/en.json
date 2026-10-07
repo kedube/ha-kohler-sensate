@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "The preset \"{title}\" is outside the 10 mL to 4 L dispense range."
+    },
+    "preset_not_found": {
+      "message": "{name} has no preset called \"{preset}\". Its presets: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Dispense water",
-      "description": "Dispenses a measured amount of water from a Sensate faucet.",
+      "description": "Dispenses a measured amount of water, or a Konnect preset, from a Sensate faucet.",
       "fields": {
         "device_id": {
           "name": "Faucet",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Unit",
           "description": "Unit of the amount. Defaults to mL for metric and fl oz for imperial, per the integration options."
+        },
+        "preset": {
+          "name": "Preset",
+          "description": "A preset saved in the Konnect app, by its name in the Preset dropdown. Use instead of amount."
         },
         "amount_ml": {
           "name": "Amount (mL)",

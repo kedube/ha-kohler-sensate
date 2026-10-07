@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "Le préréglage « {title} » est en dehors de la plage de distribution de 10 mL à 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} n'a aucun préréglage nommé « {preset} ». Ses préréglages : {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Distribuer de l'eau",
-      "description": "Distribue une quantité mesurée d'eau depuis un robinet Sensate.",
+      "description": "Distribue une quantité mesurée d'eau, ou un préréglage Konnect, depuis un robinet Sensate.",
       "fields": {
         "device_id": {
           "name": "Robinet",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Unité",
           "description": "Unité de la quantité. Par défaut, mL en métrique et fl oz en impérial, selon les options de l'intégration."
+        },
+        "preset": {
+          "name": "Préréglage",
+          "description": "Un préréglage enregistré dans l'application Konnect, par son nom dans la liste Préréglage. À utiliser à la place de Quantité."
         },
         "amount_ml": {
           "name": "Quantité (mL)",

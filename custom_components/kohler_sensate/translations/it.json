@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "La preimpostazione \"{title}\" è fuori dall'intervallo di erogazione da 10 mL a 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} non ha nessuna preimpostazione chiamata \"{preset}\". Preimpostazioni disponibili: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Eroga acqua",
-      "description": "Eroga una quantità misurata di acqua da un rubinetto Sensate.",
+      "description": "Eroga una quantità misurata di acqua, o una preimpostazione Konnect, da un rubinetto Sensate.",
       "fields": {
         "device_id": {
           "name": "Rubinetto",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Unità",
           "description": "Unità della quantità. Per impostazione predefinita mL con il sistema metrico e fl oz con quello imperiale, secondo le opzioni dell'integrazione."
+        },
+        "preset": {
+          "name": "Preimpostazione",
+          "description": "Una preimpostazione salvata nell'app Konnect, con il nome mostrato nell'elenco Preimpostazione. Da usare al posto di Quantità."
         },
         "amount_ml": {
           "name": "Quantità (mL)",

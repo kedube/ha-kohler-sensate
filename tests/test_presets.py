@@ -25,7 +25,7 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.kohler_sensate.api import SensatePreset, parse_presets
 from custom_components.kohler_sensate.const import CONFIG_REFRESH_INTERVAL, DOMAIN
-from custom_components.kohler_sensate.select import preset_labels
+from custom_components.kohler_sensate.coordinator import preset_labels
 
 from .conftest import DEVICE_ID, FakeKohler
 

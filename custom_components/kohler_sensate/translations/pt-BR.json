@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "A predefinição \"{title}\" está fora da faixa de dosagem de 10 mL a 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} não tem nenhuma predefinição chamada \"{preset}\". Predefinições disponíveis: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Dosar água",
-      "description": "Dosa uma quantidade medida de água de uma torneira Sensate.",
+      "description": "Dosa uma quantidade medida de água, ou uma predefinição do Konnect, de uma torneira Sensate.",
       "fields": {
         "device_id": {
           "name": "Torneira",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Unidade",
           "description": "Unidade da quantidade. O padrão é mL no sistema métrico e fl oz no imperial, conforme as opções da integração."
+        },
+        "preset": {
+          "name": "Predefinição",
+          "description": "Uma predefinição salva no app Konnect, pelo nome mostrado na lista Predefinição. Use no lugar de Quantidade."
         },
         "amount_ml": {
           "name": "Quantidade (mL)",

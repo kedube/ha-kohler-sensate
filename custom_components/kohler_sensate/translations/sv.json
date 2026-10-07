@@ -217,12 +217,15 @@
     },
     "preset_out_of_range": {
       "message": "Förinställningen ”{title}” ligger utanför tappintervallet 10 mL till 4 L."
+    },
+    "preset_not_found": {
+      "message": "{name} har ingen förinställning som heter ”{preset}”. Tillgängliga förinställningar: {presets}."
     }
   },
   "services": {
     "dispense": {
       "name": "Tappa vatten",
-      "description": "Tappar upp en uppmätt mängd vatten från en Sensate-kran.",
+      "description": "Tappar upp en uppmätt mängd vatten, eller en Konnect-förinställning, från en Sensate-kran.",
       "fields": {
         "device_id": {
           "name": "Kran",
@@ -235,6 +238,10 @@
         "unit": {
           "name": "Enhet",
           "description": "Mängdens enhet. Standard är mL för metriskt och fl oz för imperiskt, enligt integrationens alternativ."
+        },
+        "preset": {
+          "name": "Förinställning",
+          "description": "En förinställning som sparats i Konnect-appen, med namnet i listan Förinställning. Används i stället för Mängd."
         },
         "amount_ml": {
           "name": "Mängd (mL)",
