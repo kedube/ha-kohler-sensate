@@ -6,19 +6,20 @@ changes. Pushing to main releases them; see "Releasing" in the README. -->
 
 ## Unreleased
 
-### Breaking changes
-
-- Konnect presets are chosen from a *Preset* dropdown and dispensed with one
-  *Dispense preset* button, instead of a button per preset, so any number of
-  presets fits in two entities. The old *Preset: name* buttons are removed;
-  update dashboards that showed them, and automations and scripts that
-  pressed them (see below).
-
 ### Added
 
 - The `kohler_sensate.dispense` action takes `preset:` to dispense a preset
   saved in the Konnect app by name, in one step from automations, scripts and
   voice.
+
+## 0.6.0
+
+### Breaking changes
+
+- Konnect presets are chosen from a *Preset* dropdown and dispensed with one
+  *Dispense preset* button, instead of a button per preset, so any number of
+  presets fits in two entities. The old *Preset: name* buttons are removed;
+  update dashboards, automations and scripts that pressed them.
 
 ## 0.5.0
 
