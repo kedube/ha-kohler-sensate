@@ -3,7 +3,7 @@
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 [![GitHub release](https://img.shields.io/github/v/release/kedube/ha-kohler-sensate)](https://github.com/kedube/ha-kohler-sensate/releases)
 [![Validate](https://github.com/kedube/ha-kohler-sensate/actions/workflows/validate.yml/badge.svg)](https://github.com/kedube/ha-kohler-sensate/actions/workflows/validate.yml)
-[![Tests](https://github.com/kedube/ha-kohler-sensate/actions/workflows/tests.yml/badge.svg)](https://github.com/kedube/ha-kohler-sensate/actions/workflows/tests.yml)
+[![CI](https://github.com/kedube/ha-kohler-sensate/actions/workflows/ci.yml/badge.svg)](https://github.com/kedube/ha-kohler-sensate/actions/workflows/ci.yml)
 
 Unofficial Home Assistant integration for the **Kohler Sensate** touchless
 kitchen faucet with Konnect (SKU `SEN`). Its headline feature is **dispensing
@@ -360,7 +360,35 @@ See the [changelog](CHANGELOG.md) for the full list.
   pip install -r requirements_test.txt
   pytest
   ruff check . && ruff format --check .
+  python script/release.py check
   ```
+
+### Releasing
+
+Releases are automatic. When CI passes on `main` (lint, tests on both Home
+Assistant versions, HACS and hassfest), the release job reads the top of
+[CHANGELOG.md](CHANGELOG.md):
+
+- `## Unreleased`: it picks the next version, renames the heading to it, sets
+  `manifest.json` to match, commits *Release X.Y.Z* to `main`, tags `vX.Y.Z`,
+  and publishes a GitHub release with that section as the notes.
+- `## X.Y.Z` that isn't tagged yet: the same, with exactly that version. Use
+  this to choose a version yourself, such as 1.0.0.
+- Anything else, such as an already released version on top: nothing happens.
+
+The headings under `## Unreleased` decide the bump:
+
+| Heading                                      | Bump                                   |
+| -------------------------------------------- | -------------------------------------- |
+| `### Breaking changes`, `### Removed`        | major (minor while the version is 0.x) |
+| `### Added`, `### Changed`, `### Deprecated` | minor                                  |
+| `### Fixed`, `### Security`                  | patch                                  |
+
+So to release, add your entries under `## Unreleased` and push. For changes that
+don't need a release, like docs or CI tweaks, leave the changelog alone.
+CI checks the changelog on every push and pull request, so an unknown heading
+fails early. The release commit is made by GitHub Actions, so `git pull`
+before your next push.
 
 ## Credits
 

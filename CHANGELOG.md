@@ -1,5 +1,9 @@
 # Changelog
 
+<!-- Add new entries at the top under an "Unreleased" level-2 heading, grouped
+by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
+changes. Pushing to main releases them; see "Releasing" in the README. -->
+
 ## 0.2.0
 
 ### Added
@@ -42,6 +46,8 @@
   placeholders as the English strings.
 - A test suite that runs against the latest Home Assistant and 2026.3, plus a Ruff
   lint workflow.
+- Automatic releases: once CI passes on `main`, the changelog's new entries
+  are published as a GitHub release, with the version bumped to match.
 
 ### Fixed
 

@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -10,12 +10,19 @@ permissions:
 
 jobs:
   lint:
-    name: Ruff
+    name: Ruff and changelog
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # tags, to tell what's already released
       - uses: astral-sh/ruff-action@v4.1.0
       - run: ruff format --check
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      # Catches changelog mistakes before they reach main and block a release.
+      - run: python script/release.py check
 
   pytest:
     name: Pytest (${{ matrix.name }})
@@ -37,3 +44,53 @@ jobs:
           python-version: "3.14"
       - run: pip install ${{ matrix.harness }}
       - run: pytest
+
+  validate:
+    name: Validate
+    uses: ./.github/workflows/validate.yml
+
+  release:
+    name: Release
+    needs: [lint, pytest, validate]
+    # Only code that reached main, never pull requests or other branches.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Plan release
+        id: plan
+        run: |
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "main has moved on since this run started; its own run releases."
+            exit 0
+          fi
+          python script/release.py prepare --notes "$RUNNER_TEMP/notes.md"
+      - name: Tag and publish
+        if: steps.plan.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            # The changelog already named this version and manifest.json matches.
+            git tag "v$VERSION"
+            git push origin "v$VERSION"
+          else
+            git commit -am "Release $VERSION"
+            git tag "v$VERSION"
+            # Both or neither: if main moved on, this fails and releases nothing.
+            git push --atomic origin HEAD:main "v$VERSION"
+          fi
+          gh release create "v$VERSION" --title "$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" --verify-tag

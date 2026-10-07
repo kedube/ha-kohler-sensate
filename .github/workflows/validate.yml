@@ -1,11 +1,12 @@
 name: Validate
 
+# CI runs this on every push and pull request. The nightly run catches HACS
+# and Home Assistant tightening their checks between commits.
 on:
-  push:
-  pull_request:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
