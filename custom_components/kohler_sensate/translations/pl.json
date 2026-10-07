@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Jednostki",
           "max_run_minutes": "Limit bezpieczeństwa wody",
-          "push_updates": "Natychmiastowe aktualizacje (eksperymentalne)"
+          "push_updates": "Natychmiastowe aktualizacje"
         },
         "data_description": {
           "unit_system": "Jednostki przycisków szybkiego nalewania, ilości do nalania i sensora ostatniego nalewania oraz domyślna jednostka akcji nalewania.",

@@ -13,9 +13,13 @@ SCAN_INTERVAL_IDLE: Final = timedelta(seconds=30)
 SCAN_INTERVAL_ACTIVE: Final = timedelta(seconds=5)
 # How long to keep polling quickly after a command, while the cloud catches up.
 COMMAND_FOLLOW_UP: Final = timedelta(seconds=30)
-# Once instant updates have proven they deliver for this faucet, idle polling
-# is only a safety net.
+# Once instant updates have proven they report this faucet's changes, polling
+# is only a safety net: rarely while idle, now and then while water runs.
 SCAN_INTERVAL_PUSH: Final = timedelta(minutes=5)
+SCAN_INTERVAL_PUSH_ACTIVE: Final = timedelta(seconds=30)
+# How long instant updates get to announce a change that a poll saw first,
+# before polling stops relying on them.
+PUSH_GRACE: Final = timedelta(seconds=15)
 # Refresh the configuration (firmware, leak history, presets) less often.
 CONFIG_REFRESH_INTERVAL: Final = timedelta(minutes=5)
 # Bounds for honoring Kohler's Retry-After when it throttles us.
@@ -85,7 +89,7 @@ CONF_MAX_RUN_MINUTES: Final = "max_run_minutes"
 CONF_PUSH_UPDATES: Final = "push_updates"
 # Water turned on from Home Assistant is turned off after this long; 0 = never.
 DEFAULT_MAX_RUN_MINUTES: Final = 10
-DEFAULT_PUSH_UPDATES: Final = False
+DEFAULT_PUSH_UPDATES: Final = True
 UNIT_SYSTEM_METRIC: Final = "metric"
 UNIT_SYSTEM_IMPERIAL: Final = "imperial"
 UNIT_SYSTEMS: Final = [UNIT_SYSTEM_METRIC, UNIT_SYSTEM_IMPERIAL]

@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Enheter",
           "max_run_minutes": "Säkerhetsgräns för vatten",
-          "push_updates": "Direktuppdateringar (experimentellt)"
+          "push_updates": "Direktuppdateringar"
         },
         "data_description": {
           "unit_system": "Enheter för snabbtappningsknapparna, tappmängden, sensorn för senaste tappning och standardenheten för tappningsåtgärden.",

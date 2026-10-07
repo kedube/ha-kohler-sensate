@@ -38,8 +38,9 @@ directly, signing in with your normal Konnect email and password.
 - **Offline detection**: when the faucet loses its connection, its entities
   show as unavailable instead of stale values, and commands give a clear
   error.
-- **Instant updates** (experimental, opt-in): listens to Kohler's real-time
-  feed like the Konnect app does.
+- **Instant updates**: listens to Kohler's real-time feed like the Konnect
+  app does, so changes show up within a second or two, with light polling as
+  a safety net.
 - **Konnect presets** (experimental): a button for each preset saved in the
   app.
 - **Automatic sign-in**: sessions renew on their own; you're only asked to
@@ -110,7 +111,7 @@ Go to **Settings → Devices & services → Kohler Sensate → Configure**:
 | --------------------------------- | ------------------------ | ----------- |
 | Units                             | Home Assistant's system  | Metric or imperial, for dispensing (see below). |
 | Water safety limit                | 10 minutes               | Turns the water off this long after it was turned on from Home Assistant, unless it was turned off in the meantime. `0` turns the limit off. |
-| Instant updates (experimental)    | Off                      | See [Instant updates](#instant-updates-experimental). |
+| Instant updates                   | On                       | See [Instant updates](#instant-updates). |
 
 #### Units
 
@@ -217,36 +218,49 @@ automation:
 
 ## How data is updated
 
-The integration polls Kohler's cloud, adjusting how often to what the
-faucet is doing:
+With instant updates on (the default), the integration listens to Kohler's
+real-time feed and re-reads the faucet the moment it changes, whether from
+Home Assistant, the Konnect app or by hand. It still polls Kohler's cloud as
+a safety net, adjusting how often to what the faucet is doing:
 
-| When                                                   | Faucet state checked |
-| ------------------------------------------------------ | -------------------- |
-| Idle                                                   | Every 30 seconds     |
-| Water running, dispensing, or within 30 s of a command | Every 5 seconds      |
-| Kohler's cloud is unreachable                          | Every 30 seconds     |
+| When                                                   | With the feed | Without it   |
+| ------------------------------------------------------ | ------------- | ------------ |
+| Idle                                                   | Every 5 min   | Every 30 s   |
+| Water running, dispensing, or within 30 s of a command | Every 30 s    | Every 5 s    |
+| Kohler's cloud is unreachable                          | Every 30 s    | Every 30 s   |
 
-Firmware and leak history are checked every 5 minutes, so a leak shows up
-within about 5 minutes of Kohler reporting it.
+"Without it" covers instant updates being off, still connecting, reconnecting
+after a drop, or not yet trusted (see below).
 
-If someone uses the faucet by hand, Home Assistant can take up to 30 seconds
-to notice. Short dispenses can finish between polls, so *Dispense progress*
-and *Dispensing* may not show every dispense. *Last dispensed* always records
-dispenses started from Home Assistant.
+Firmware and leak history are checked every 5 minutes, and whenever the feed
+reports a change, so a leak shows up within about 5 minutes of Kohler
+reporting it.
 
-### Instant updates (experimental)
+Without the feed, if someone uses the faucet by hand, Home Assistant can take
+up to 30 seconds to notice, and short dispenses can finish between polls, so
+*Dispense progress* and *Dispensing* may not show every dispense. *Last
+dispensed* always records dispenses started from Home Assistant.
 
-With this option on, the integration also holds a connection to Kohler's
-real-time feed (Azure IoT Hub), the way the Konnect app does. Any message
-about your faucet makes Home Assistant re-read its state right away. Once the
-feed has delivered for your faucet, idle polling relaxes to every 5 minutes;
-if the feed drops, polling goes back to every 30 seconds while it reconnects.
+### Instant updates
 
-The feed has been confirmed with a Sensate on firmware 16.0. It stays
-experimental because Kohler doesn't document it and could change it; if
-nothing arrives, nothing breaks, and polling carries on as before. The option adds a "HomeAssistant" entry to the
-notification devices on your Kohler account. **Download diagnostics** shows
-whether the feed is connected and how many messages it has received.
+The integration holds a connection to Kohler's real-time feed (Azure IoT
+Hub), the way the Konnect app does. Any message about your faucet makes Home
+Assistant re-read its state right away.
+
+Polling relaxes only once the feed has delivered for your faucet, and the
+integration keeps checking that it keeps up: if a poll finds a change the
+feed never announced, polling goes back to its usual pace until the feed
+delivers again. If the connection drops, the integration re-reads the faucet
+at once and polls as usual while it reconnects.
+
+The feed has been confirmed with a Sensate on firmware 16.0. Kohler doesn't
+document it and could change it; if it stops working, nothing breaks, and
+polling carries on.
+
+The connection adds a "HomeAssistant" entry to the notification devices on
+your Kohler account. To rely on polling alone, turn off **Instant updates**
+under **Configure**. **Download diagnostics** shows whether the feed is
+connected, how many messages it has received, and how many changes it missed.
 
 ### Konnect presets (experimental)
 
@@ -330,6 +344,9 @@ in the app appear or go unavailable within 5 minutes.
    and select **⋮ → Remove**. Otherwise, delete
    `custom_components/kohler_sensate/`.
 3. Restart Home Assistant.
+
+Instant updates registered a "HomeAssistant" entry among your Kohler
+account's notification devices; deleting the faucet doesn't remove it.
 
 ## Upgrading from 0.1
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
+from functools import partial
 import hashlib
 import json
 import logging
@@ -36,12 +37,14 @@ from .const import (
     ISSUE_API_CHANGED,
     ISSUE_FAUCET_NOT_FOUND,
     MAX_CLEARED_LEAKS,
+    PUSH_GRACE,
     REJECTIONS_BEFORE_ISSUE,
     RETRY_AFTER_MAX,
     RETRY_AFTER_MIN,
     SCAN_INTERVAL_ACTIVE,
     SCAN_INTERVAL_IDLE,
     SCAN_INTERVAL_PUSH,
+    SCAN_INTERVAL_PUSH_ACTIVE,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -96,6 +99,11 @@ def _water_running(state: dict[str, Any]) -> bool | None:
     return None
 
 
+def _push_signature(state: dict[str, Any]) -> tuple[bool | None, bool]:
+    """The changes instant updates must announce: water running, dispensing."""
+    return _water_running(state), _dispensing(state)
+
+
 class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Polls faucet state and, less often, configuration and leak history."""
 
@@ -143,6 +151,13 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Optional instant updates; set up by __init__.py when enabled.
         self.push: SensatePush | None = None
         self.push_verified = False
+        # Self-check of instant updates: the feed has accounted for every
+        # change up to _push_synced_at; polls that find a change it never
+        # announced count as missed and stop polling from relying on it.
+        self._push_synced_at: float | None = None
+        self._polled_at: float | None = None
+        self._push_check: CALLBACK_TYPE | None = None
+        self.push_missed = 0
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, STORAGE_KEY.format(entry_id=entry.entry_id)
         )
@@ -176,19 +191,26 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._auto_off_timer is not None:
             self._auto_off_timer()
             self._auto_off_timer = None
+        if self._push_check is not None:
+            self._push_check()
+            self._push_check = None
         await super().async_shutdown()
 
     # --- polling --------------------------------------------------------------
 
     @property
+    def push_trusted(self) -> bool:
+        """Instant updates are connected and have proven they report changes."""
+        return self.push is not None and self.push.connected and self.push_verified
+
+    @property
     def _idle_interval(self) -> timedelta:
-        if self.push is not None and self.push.connected and self.push_verified:
-            return SCAN_INTERVAL_PUSH
-        return SCAN_INTERVAL_IDLE
+        return SCAN_INTERVAL_PUSH if self.push_trusted else SCAN_INTERVAL_IDLE
 
     async def _async_update_data(self) -> dict[str, Any]:
         # Errors fall back to slow polling; no point hammering a failing cloud.
         self.update_interval = self._idle_interval
+        polled_at = time.monotonic()
         try:
             snapshot = await self.api.async_get_state(self.device_id)
         except SensateAuthError as err:
@@ -212,6 +234,8 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._clear_issues()
         state = snapshot.state
+        self._check_push_announced(state)
+        self._polled_at = polled_at
         self.connection_state = snapshot.connection_state
         self.last_connected = snapshot.last_connected
         self._record_values(state)
@@ -229,7 +253,10 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Seen running, now off: no need for the safety limit any more.
             await self._async_cancel_auto_off()
         if running or time.monotonic() < self._fast_poll_until:
-            self.update_interval = SCAN_INTERVAL_ACTIVE
+            # A trusted feed reports the change the moment it happens.
+            self.update_interval = (
+                SCAN_INTERVAL_PUSH_ACTIVE if self.push_trusted else SCAN_INTERVAL_ACTIVE
+            )
         return state
 
     def _record_values(self, state: dict[str, Any]) -> None:
@@ -430,13 +457,52 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @callback
     def async_push_activity(self, about_faucet: bool) -> None:
-        """Instant updates saw a change (or reconnected): re-read the faucet."""
+        """Instant updates saw a change, connected or dropped: re-read the faucet."""
+        # In every case, the refresh below catches up on everything until now.
+        self._push_synced_at = time.monotonic()
         if about_faucet:
             # Proof the feed delivers for this faucet; polling can relax.
             self.push_verified = True
             self._config_due = True  # it may be a leak alert
         self.config_entry.async_create_task(
             self.hass, self.async_request_refresh(), "kohler_sensate push refresh"
+        )
+
+    def _check_push_announced(self, state: dict[str, Any]) -> None:
+        """Start the self-check when a poll finds a change the feed hasn't announced."""
+        if (
+            not self.push_trusted
+            or self.data is None
+            or self._polled_at is None
+            or self._push_check is not None
+            or _push_signature(state) == _push_signature(self.data)
+        ):
+            return
+        since = self._polled_at  # the change happened after the previous poll
+        if self._push_synced_at is not None and self._push_synced_at > since:
+            return
+        # Its announcement may still be on the way, as after a command.
+        self._push_check = async_call_later(
+            self.hass, PUSH_GRACE, partial(self._async_push_check, since)
+        )
+
+    @callback
+    def _async_push_check(self, since: float, _now: datetime) -> None:
+        self._push_check = None
+        if self._push_synced_at is not None and self._push_synced_at > since:
+            return
+        self.push_missed += 1
+        if not self.push_verified:
+            return
+        _LOGGER.debug(
+            "Instant updates missed a change on %s; polling as usual until "
+            "they deliver again",
+            self.config_entry.title,
+        )
+        self.push_verified = False
+        # Apply the faster polling now, not after the current long interval.
+        self.config_entry.async_create_task(
+            self.hass, self.async_request_refresh(), "kohler_sensate push check"
         )
 
     # --- convenience accessors used by entities -----------------------------

@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Unités",
           "max_run_minutes": "Limite de sécurité de l'eau",
-          "push_updates": "Mises à jour instantanées (expérimental)"
+          "push_updates": "Mises à jour instantanées"
         },
         "data_description": {
           "unit_system": "Unités des boutons de distribution rapide, de la quantité à distribuer, du capteur de dernière distribution et de l'unité par défaut de l'action de distribution.",

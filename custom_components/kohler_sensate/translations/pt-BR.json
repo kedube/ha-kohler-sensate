@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Unidades",
           "max_run_minutes": "Limite de segurança da água",
-          "push_updates": "Atualizações instantâneas (experimental)"
+          "push_updates": "Atualizações instantâneas"
         },
         "data_description": {
           "unit_system": "Unidades dos botões de dosagem rápida, da quantidade a dosar, do sensor da última dosagem e unidade padrão da ação de dosar.",

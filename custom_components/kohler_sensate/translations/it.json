@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Unità",
           "max_run_minutes": "Limite di sicurezza dell'acqua",
-          "push_updates": "Aggiornamenti istantanei (sperimentale)"
+          "push_updates": "Aggiornamenti istantanei"
         },
         "data_description": {
           "unit_system": "Unità per i pulsanti di erogazione rapida, la quantità da erogare, il sensore dell'ultima erogazione e l'unità predefinita dell'azione di erogazione.",

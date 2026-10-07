@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 from datetime import timedelta
-import json
 import logging
 import time
-from typing import Any, ClassVar
-from unittest.mock import patch
 
 from freezegun.api import FrozenDateTimeFactory
+from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
+from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import (
@@ -20,89 +19,16 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.kohler_sensate.const import (
     CONF_PUSH_UPDATES,
+    CONF_UNIT_SYSTEM,
+    PUSH_GRACE,
+    SCAN_INTERVAL_ACTIVE,
     SCAN_INTERVAL_IDLE,
     SCAN_INTERVAL_PUSH,
+    SCAN_INTERVAL_PUSH_ACTIVE,
+    UNIT_SYSTEM_METRIC,
 )
 
-from .conftest import DEVICE_ID, TENANT_ID, FakeKohler
-
-
-class Reason:
-    def __init__(self, failure: bool = False) -> None:
-        self.is_failure = failure
-
-    def __str__(self) -> str:
-        return "failure" if self.is_failure else "success"
-
-
-class Message:
-    def __init__(self, topic: str, payload: bytes) -> None:
-        self.topic = topic
-        self.payload = payload
-
-
-class FakeMqttClient:
-    """Stands in for paho; connects instantly unless told to refuse."""
-
-    instances: ClassVar[list[FakeMqttClient]] = []
-    refuse: ClassVar[bool] = False
-
-    def __init__(self, **kwargs: Any) -> None:
-        self.kwargs = kwargs
-        self.published: list[tuple[str, bytes]] = []
-        self.subscribed: list[str] = []
-        self.stopped = False
-        FakeMqttClient.instances.append(self)
-
-    def username_pw_set(self, username: str, password: str) -> None:
-        self.username, self.password = username, password
-
-    def tls_set_context(self, context: Any) -> None:
-        self.tls = context
-
-    def connect_async(self, host: str, port: int, keepalive: int) -> None:
-        self.host, self.port = host, port
-
-    def loop_start(self) -> None:
-        self.on_connect(self, None, None, Reason(FakeMqttClient.refuse), None)
-
-    def subscribe(self, topic: str, qos: int) -> None:
-        self.subscribed.append(topic)
-        self.on_subscribe(self, None, 1, [Reason()], None)
-
-    def publish(self, topic: str, payload: bytes, qos: int) -> None:
-        self.published.append((topic, payload))
-
-    def disconnect(self) -> None:
-        pass
-
-    def loop_stop(self) -> None:
-        # Real paho joins its network thread here; take real time like a slow
-        # CI runner would, so tests can't depend on it finishing instantly.
-        time.sleep(0.05)
-        self.stopped = True
-
-    # helpers for tests
-    def deliver(self, payload: dict[str, Any], rid: str = "1") -> None:
-        self.on_message(
-            self,
-            None,
-            Message(
-                f"$iothub/methods/POST/statusUpdate/?$rid={rid}",
-                json.dumps(payload).encode(),
-            ),
-        )
-
-    def drop(self) -> None:
-        self.on_disconnect(self, None, None, Reason(True), None)
-
-
-@pytest.fixture(autouse=True)
-def fake_mqtt() -> Generator[type[FakeMqttClient]]:
-    FakeMqttClient.instances = []
-    FakeMqttClient.refuse = False
-    with patch("custom_components.kohler_sensate.push.mqtt.Client", FakeMqttClient):
-        yield FakeMqttClient
+from .conftest import DEVICE_ID, TENANT_ID, FakeKohler, FakeMqttClient
 
 
 async def _wait_for(
@@ -142,9 +68,36 @@ async def _advance(
     await hass.async_block_till_done()
 
 
-async def test_disabled_by_default(
+async def _faucet_message(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, rid: str = "1"
+) -> None:
+    """Deliver a message about the faucet and let its refresh run."""
+    FakeMqttClient.instances[-1].deliver(
+        {"sku": "SEN", "deviceid": DEVICE_ID, "data": {}}, rid=rid
+    )
+    # At most the 1 s refresh cooldown after the previous refresh.
+    await _advance(hass, freezer, timedelta(seconds=1))
+
+
+async def test_on_by_default(
+    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
+) -> None:
+    # Options as a new faucet gets them, without the instant-updates choice.
+    hass.config_entries.async_update_entry(
+        config_entry, options={CONF_UNIT_SYSTEM: UNIT_SYSTEM_METRIC}
+    )
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    push = config_entry.runtime_data.push
+    assert push is not None
+    await _wait_for(hass, lambda: push.connected, "the connection")
+    assert len(kohler.push_registrations) == 1
+
+
+async def test_can_be_turned_off(
     hass: HomeAssistant, setup_entry: MockConfigEntry, kohler: FakeKohler
 ) -> None:
+    assert setup_entry.options[CONF_PUSH_UPDATES] is False
+    assert setup_entry.runtime_data.push is None
     assert kohler.push_registrations == []
     assert FakeMqttClient.instances == []
 
@@ -295,3 +248,109 @@ async def test_unload_stops_the_connection(
 ) -> None:
     assert await hass.config_entries.async_unload(push_entry.entry_id)
     assert FakeMqttClient.instances[0].stopped
+
+
+# --- relying on the feed ------------------------------------------------------
+
+
+async def test_trusted_feed_relaxes_polling_while_water_runs(
+    freezer: FrozenDateTimeFactory,
+    hass: HomeAssistant,
+    push_entry: MockConfigEntry,
+    kohler: FakeKohler,
+) -> None:
+    coordinator = push_entry.runtime_data
+    kohler.state["status"] = "On"
+    await _faucet_message(hass, freezer)
+    assert hass.states.get("switch.kitchen_water").state == "on"
+    assert coordinator.update_interval == SCAN_INTERVAL_PUSH_ACTIVE
+
+    polls = kohler.state_polls
+    await _advance(hass, freezer, SCAN_INTERVAL_ACTIVE)
+    assert kohler.state_polls == polls
+    await _advance(hass, freezer, SCAN_INTERVAL_PUSH_ACTIVE - SCAN_INTERVAL_ACTIVE)
+    assert kohler.state_polls == polls + 1
+
+
+async def test_unannounced_change_stops_relying_on_the_feed(
+    freezer: FrozenDateTimeFactory,
+    hass: HomeAssistant,
+    push_entry: MockConfigEntry,
+    kohler: FakeKohler,
+) -> None:
+    coordinator = push_entry.runtime_data
+    await _faucet_message(hass, freezer)
+    assert coordinator.update_interval == SCAN_INTERVAL_PUSH
+
+    # Water turned on by hand, and the feed says nothing.
+    kohler.state["status"] = "On"
+    await _advance(hass, freezer, SCAN_INTERVAL_PUSH)
+    assert hass.states.get("switch.kitchen_water").state == "on"
+    assert coordinator.push_trusted  # its message may still be on the way
+
+    await _advance(hass, freezer, PUSH_GRACE)
+    assert not coordinator.push_trusted
+    assert coordinator.push_missed == 1
+    assert coordinator.update_interval == SCAN_INTERVAL_ACTIVE
+
+    # The next message earns the trust back.
+    await _faucet_message(hass, freezer, rid="2")
+    assert coordinator.push_trusted
+    assert coordinator.update_interval == SCAN_INTERVAL_PUSH_ACTIVE
+
+
+async def test_change_announced_just_after_a_poll_keeps_trust(
+    freezer: FrozenDateTimeFactory,
+    hass: HomeAssistant,
+    push_entry: MockConfigEntry,
+    kohler: FakeKohler,
+) -> None:
+    coordinator = push_entry.runtime_data
+    await _faucet_message(hass, freezer)
+    await _advance(hass, freezer, timedelta(seconds=5))
+
+    # A command re-reads the faucet at once, before the feed announces it.
+    kohler.state["status"] = "On"
+    await hass.services.async_call(
+        SWITCH_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: "switch.kitchen_water"},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("switch.kitchen_water").state == "on"
+    await _faucet_message(hass, freezer, rid="2")
+
+    await _advance(hass, freezer, PUSH_GRACE)
+    assert coordinator.push_trusted
+    assert coordinator.push_missed == 0
+
+
+async def test_dropped_feed_falls_back_and_catches_up(
+    freezer: FrozenDateTimeFactory,
+    hass: HomeAssistant,
+    push_entry: MockConfigEntry,
+    kohler: FakeKohler,
+) -> None:
+    coordinator = push_entry.runtime_data
+    push = coordinator.push
+    await _faucet_message(hass, freezer)
+    assert coordinator.update_interval == SCAN_INTERVAL_PUSH
+
+    polls = kohler.state_polls
+    FakeMqttClient.instances[0].drop()
+    await _wait_for(hass, lambda: push.next_retry_at is not None, "a reconnect")
+    await _advance(hass, freezer, timedelta(seconds=1))  # refresh cooldown
+    # Re-read at once, and poll as usual until the feed is back.
+    assert kohler.state_polls == polls + 1
+    assert coordinator.update_interval == SCAN_INTERVAL_IDLE
+
+    # A change while the feed was down isn't one it missed.
+    kohler.state["status"] = "On"
+    await _advance(hass, freezer, timedelta(seconds=10))
+    await _wait_for(hass, lambda: push.connected, "the reconnection")
+    await _advance(hass, freezer, timedelta(seconds=1))
+    assert hass.states.get("switch.kitchen_water").state == "on"
+    await _advance(hass, freezer, PUSH_GRACE)
+    assert coordinator.push_trusted
+    assert coordinator.push_missed == 0

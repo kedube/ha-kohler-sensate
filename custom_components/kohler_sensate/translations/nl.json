@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Eenheden",
           "max_run_minutes": "Waterveiligheidslimiet",
-          "push_updates": "Directe updates (experimenteel)"
+          "push_updates": "Directe updates"
         },
         "data_description": {
           "unit_system": "Eenheden voor de snelle doseerknoppen, de doseerhoeveelheid, de sensor voor de laatste dosering en de standaardeenheid van de doseeractie.",

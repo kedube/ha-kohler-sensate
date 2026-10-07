@@ -10,7 +10,9 @@ import base64
 from collections.abc import Generator
 import json
 import re
-from typing import Any
+import time
+from typing import Any, ClassVar
+from unittest.mock import patch
 
 from aiohttp import ClientError
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
@@ -26,6 +28,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
 from custom_components.kohler_sensate.const import (
     API_BASE,
     CONF_DEVICE_ID,
+    CONF_PUSH_UPDATES,
     CONF_UNIT_SYSTEM,
     DOMAIN,
     TOKEN_URL,
@@ -208,6 +211,85 @@ def get_device(hass: HomeAssistant, entry: MockConfigEntry) -> dr.DeviceEntry:
     return device
 
 
+class Reason:
+    def __init__(self, failure: bool = False) -> None:
+        self.is_failure = failure
+
+    def __str__(self) -> str:
+        return "failure" if self.is_failure else "success"
+
+
+class Message:
+    def __init__(self, topic: str, payload: bytes) -> None:
+        self.topic = topic
+        self.payload = payload
+
+
+class FakeMqttClient:
+    """Stands in for paho; connects instantly unless told to refuse."""
+
+    instances: ClassVar[list[FakeMqttClient]] = []
+    refuse: ClassVar[bool] = False
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.kwargs = kwargs
+        self.published: list[tuple[str, bytes]] = []
+        self.subscribed: list[str] = []
+        self.stopped = False
+        FakeMqttClient.instances.append(self)
+
+    def username_pw_set(self, username: str, password: str) -> None:
+        self.username, self.password = username, password
+
+    def tls_set_context(self, context: Any) -> None:
+        self.tls = context
+
+    def connect_async(self, host: str, port: int, keepalive: int) -> None:
+        self.host, self.port = host, port
+
+    def loop_start(self) -> None:
+        self.on_connect(self, None, None, Reason(FakeMqttClient.refuse), None)
+
+    def subscribe(self, topic: str, qos: int) -> None:
+        self.subscribed.append(topic)
+        self.on_subscribe(self, None, 1, [Reason()], None)
+
+    def publish(self, topic: str, payload: bytes, qos: int) -> None:
+        self.published.append((topic, payload))
+
+    def disconnect(self) -> None:
+        pass
+
+    def loop_stop(self) -> None:
+        # Real paho joins its network thread here; take real time like a slow
+        # CI runner would, so tests can't depend on it finishing instantly.
+        time.sleep(0.05)
+        self.stopped = True
+
+    # helpers for tests
+    def deliver(self, payload: dict[str, Any], rid: str = "1") -> None:
+        self.on_message(
+            self,
+            None,
+            Message(
+                f"$iothub/methods/POST/statusUpdate/?$rid={rid}",
+                json.dumps(payload).encode(),
+            ),
+        )
+
+    def drop(self) -> None:
+        self.on_disconnect(self, None, None, Reason(True), None)
+
+
+@pytest.fixture(autouse=True)
+def fake_mqtt() -> Generator[type[FakeMqttClient]]:
+    """Instant updates are on by default; never open a real connection."""
+    FakeMqttClient.instances = []
+    FakeMqttClient.refuse = False
+    with patch("custom_components.kohler_sensate.push.mqtt.Client", FakeMqttClient):
+        yield FakeMqttClient
+
+
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(
     enable_custom_integrations: None,
@@ -231,7 +313,8 @@ def config_entry(hass: HomeAssistant) -> MockConfigEntry:
             CONF_PASSWORD: PASSWORD,
             CONF_DEVICE_ID: DEVICE_ID,
         },
-        options={CONF_UNIT_SYSTEM: UNIT_SYSTEM_METRIC},
+        # Most tests exercise polling alone; test_push covers instant updates.
+        options={CONF_UNIT_SYSTEM: UNIT_SYSTEM_METRIC, CONF_PUSH_UPDATES: False},
     )
     entry.add_to_hass(hass)
     return entry

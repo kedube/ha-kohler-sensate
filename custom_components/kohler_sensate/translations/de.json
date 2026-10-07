@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Einheiten",
           "max_run_minutes": "Wasser-Sicherheitslimit",
-          "push_updates": "Sofortige Aktualisierungen (experimentell)"
+          "push_updates": "Sofortige Aktualisierungen"
         },
         "data_description": {
           "unit_system": "Einheiten für die Schnelldosier-Tasten, die Dosiermenge, den Sensor „Zuletzt dosiert“ und die Standardeinheit der Dosier-Aktion.",

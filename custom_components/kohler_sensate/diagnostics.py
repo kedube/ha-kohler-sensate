@@ -98,6 +98,7 @@ def _diagnostics(entry: SensateConfigEntry) -> dict[str, Any]:
             "connected": push.connected,
             "messages_for_this_faucet": push.messages,
             "verified": coordinator.push_verified,
+            "missed_changes": coordinator.push_missed,
             "last_error": push.last_error,
             "next_retry_at": push.next_retry_at,
         },

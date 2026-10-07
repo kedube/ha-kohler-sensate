@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Units",
           "max_run_minutes": "Water safety limit",
-          "push_updates": "Instant updates (experimental)"
+          "push_updates": "Instant updates"
         },
         "data_description": {
           "unit_system": "Units for the quick-dispense buttons, the dispense amount, the last dispense sensor, and the default unit of the dispense action.",

@@ -4,6 +4,30 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Unreleased
+
+### Changed
+
+- Instant updates are on by default and no longer experimental: they're
+  confirmed with a Sensate on firmware 16.0, where on/off and dispenses show
+  up within a second or two. Faucets whose options you saved before keep
+  their setting; turn it on under **Configure**.
+- While the feed is working, polling during running water, dispenses and
+  commands slows from every 5 seconds to every 30, since the feed reports
+  those changes as they happen.
+
+### Added
+
+- The integration checks that instant updates keep up. If a poll finds a
+  change the feed never announced, polling goes back to its usual pace until
+  the feed delivers again. Diagnostics count the missed changes.
+
+### Fixed
+
+- When the instant-updates connection drops, the faucet is re-read at once
+  and polling returns to every 30 seconds, instead of waiting up to 5 minutes
+  for the next poll.
+
 ## 0.2.1
 
 ### Security

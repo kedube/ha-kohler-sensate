@@ -65,7 +65,7 @@
         "data": {
           "unit_system": "Unidades",
           "max_run_minutes": "Límite de seguridad del agua",
-          "push_updates": "Actualizaciones instantáneas (experimental)"
+          "push_updates": "Actualizaciones instantáneas"
         },
         "data_description": {
           "unit_system": "Unidades de los botones de dispensado rápido, la cantidad a dispensar, el sensor del último dispensado y la unidad predeterminada de la acción dispensar.",

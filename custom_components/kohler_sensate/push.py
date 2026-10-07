@@ -101,6 +101,7 @@ class SensatePush:
     async def _async_run(self) -> None:
         attempt = 0
         while True:
+            dropped = False
             try:
                 await self._async_connect()
             except SensateAuthError as err:
@@ -118,7 +119,12 @@ class SensatePush:
                 attempt = 0
                 await self._lost.wait()
                 _LOGGER.debug("Instant updates disconnected; reconnecting")
+                dropped = True
             await self._async_close()
+            if dropped:
+                # Polling stands in until the feed is back: catch up now, and
+                # at the pace used without the feed.
+                self._on_activity(False)
             delay = MQTT_BACKOFF[min(attempt, len(MQTT_BACKOFF) - 1)]
             attempt += 1
             self.next_retry_at = time.time() + delay
