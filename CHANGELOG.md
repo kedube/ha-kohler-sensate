@@ -4,6 +4,12 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Released
+
+### Changed
+
+- Updated Home Assistant integration icons.
+
 ## 0.8.0
 
 ### Changed
