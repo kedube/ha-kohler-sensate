@@ -46,11 +46,12 @@ directly, signing in with your normal Konnect email and password.
   sign in again if Kohler rejects your password.
 - **Repair notices** when the faucet disappears from your account or Kohler's
   API changes, and **diagnostics** with personal data redacted.
+- **In your language**: English, Dutch, French, German, Italian, Polish,
+  Portuguese (Brazil), Spanish and Swedish. Other languages show English.
 
 ## Requirements
 
-- Home Assistant **2025.8** or newer. Home Assistant 2026.3+ also shows the
-  integration's icon and logo.
+- Home Assistant **2026.3** or newer.
 - A Kohler Konnect account with the Sensate faucet already set up in the
   Konnect app.
 - Works with any Konnect account, as far as is known: the Konnect app itself
@@ -332,6 +333,7 @@ in the app appear or go unavailable within 5 minutes.
 
 ## Upgrading from 0.1
 
+- Home Assistant 2026.3 or newer is required (0.1 allowed 2024.8).
 - Entity IDs are unchanged.
 - The `dispense` action now takes `amount` and `unit`. `amount_ml` and
   `amount_l` still work.
@@ -347,6 +349,11 @@ See the [changelog](CHANGELOG.md) for the full list.
   `pip install kohler-anthem` and your credentials in `recon/.env`. Their
   captures contain personal data, so redact them before sharing.
   `faucet_probe.py` also hunts for the water-usage endpoint's parameters.
+- Translations live in `custom_components/kohler_sensate/translations/`.
+  `strings.json` is the English source and `en.json` must match it. When you
+  change a string, update every language; `tests/test_translations.py` fails
+  if a language is missing a key or a `{placeholder}`. Corrections from
+  native speakers are welcome.
 - Run the checks:
 
   ```sh

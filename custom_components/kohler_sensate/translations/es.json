@@ -79,7 +79,7 @@
     "unit_system": {
       "options": {
         "metric": "Métrico (mL, L)",
-        "imperial": "Imperial (fl oz, tazas, cuartos, galones)"
+        "imperial": "Imperial (unidades de EE. UU.: fl oz, tazas, cuartos, galones)"
       }
     },
     "volume_unit": {

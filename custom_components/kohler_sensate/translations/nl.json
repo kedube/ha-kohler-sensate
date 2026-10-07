@@ -1,0 +1,238 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Log in met je Kohler Konnect-account.",
+        "data": {
+          "username": "E-mail",
+          "password": "Wachtwoord"
+        },
+        "data_description": {
+          "username": "Het e-mailadres waarmee je inlogt in de Kohler Konnect-app.",
+          "password": "Je Kohler Konnect-wachtwoord. Het wordt opgeslagen in Home Assistant zodat de integratie zelf opnieuw kan inloggen wanneer de sessie bij Kohler verloopt."
+        }
+      },
+      "pick_device": {
+        "title": "Kies een kraan",
+        "description": "Dit account heeft meer dan één Sensate-kraan. Kies de kraan die je wilt toevoegen; de andere kun je daarna toevoegen.",
+        "data": {
+          "device_id": "Kraan"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Opnieuw inloggen bij Kohler Konnect",
+        "description": "Kohler accepteert het opgeslagen wachtwoord voor {name} niet meer. Voer je huidige Konnect-wachtwoord in.",
+        "data": {
+          "username": "E-mail",
+          "password": "Wachtwoord"
+        },
+        "data_description": {
+          "username": "Het e-mailadres waarmee je inlogt in de Kohler Konnect-app.",
+          "password": "Je huidige Kohler Konnect-wachtwoord."
+        }
+      },
+      "reconfigure": {
+        "title": "Kohler Konnect-account bijwerken",
+        "description": "Wijzig het e-mailadres of wachtwoord voor {name}. Deze kraan moet nog steeds aan het account gekoppeld zijn.",
+        "data": {
+          "username": "E-mail",
+          "password": "Wachtwoord"
+        },
+        "data_description": {
+          "username": "Het e-mailadres waarmee je inlogt in de Kohler Konnect-app.",
+          "password": "Je Kohler Konnect-wachtwoord. Het wordt opgeslagen in Home Assistant zodat de integratie zelf opnieuw kan inloggen wanneer de sessie bij Kohler verloopt."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ongeldig e-mailadres of wachtwoord.",
+      "cannot_connect": "Kan de Kohler-cloud niet bereiken. Probeer het opnieuw.",
+      "no_device": "Er is geen Sensate-kraan gevonden in dit account.",
+      "unknown": "Onverwachte fout. Bekijk de logboeken voor details."
+    },
+    "abort": {
+      "already_configured": "Deze kraan is al ingesteld.",
+      "reauth_successful": "Opnieuw ingelogd.",
+      "wrong_account": "Dit account heeft niet de kraan die is ingesteld. Log in met het account waar de kraan bij hoort.",
+      "reconfigure_successful": "Account bijgewerkt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kohler Sensate-opties",
+        "data": {
+          "unit_system": "Eenheden",
+          "max_run_minutes": "Waterveiligheidslimiet",
+          "push_updates": "Directe updates (experimenteel)"
+        },
+        "data_description": {
+          "unit_system": "Eenheden voor de snelle doseerknoppen, de doseerhoeveelheid, de sensor voor de laatste dosering en de standaardeenheid van de doseeractie.",
+          "max_run_minutes": "Zet het water zoveel minuten nadat het vanuit Home Assistant is aangezet weer uit, tenzij het intussen al is uitgezet. 0 schakelt de limiet uit.",
+          "push_updates": "Luistert net als de Konnect-app naar de realtimefeed van Kohler en werkt bij zodra de kraan verandert. Voegt een Home Assistant-item toe aan de meldingsapparaten van je Kohler-account. Periodiek opvragen blijft actief als back-up."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Metrisch (mL, L)",
+        "imperial": "Imperiaal (Amerikaanse eenheden: fl oz, kopjes, quarts, gallons)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Milliliter (mL)",
+        "l": "Liter (L)",
+        "fl_oz": "Vloeibare ounces (fl oz)",
+        "cup": "Kopjes",
+        "qt": "Quarts",
+        "gal": "Gallons"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Lek"
+      },
+      "dispensing": {
+        "name": "Doseren"
+      },
+      "connected": {
+        "name": "Verbonden"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "{amount} doseren"
+      },
+      "dispense_quarter_cup": {
+        "name": "¼ kopje doseren"
+      },
+      "dispense_half_cup": {
+        "name": "½ kopje doseren"
+      },
+      "dispense_one_cup": {
+        "name": "1 kopje doseren"
+      },
+      "dispense_two_cups": {
+        "name": "2 kopjes doseren"
+      },
+      "dispense_one_quart": {
+        "name": "1 quart doseren"
+      },
+      "dispense_half_gallon": {
+        "name": "½ gallon doseren"
+      },
+      "dispense_one_gallon": {
+        "name": "1 gallon doseren"
+      },
+      "dispense_set_amount": {
+        "name": "Ingestelde hoeveelheid doseren"
+      },
+      "clear_leak": {
+        "name": "Lekmelding wissen"
+      },
+      "preset": {
+        "name": "Voorinstelling: {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Doseerhoeveelheid"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "progress": {
+        "name": "Doseervoortgang"
+      },
+      "handle_state": {
+        "name": "Hendel"
+      },
+      "last_dispense": {
+        "name": "Laatst gedoseerd"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Water"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kohler heeft de opgeslagen inloggegevens geweigerd. Log opnieuw in via de integratiepagina."
+    },
+    "update_failed": {
+      "message": "Fout bij communicatie met de Kohler-cloud: {error}"
+    },
+    "command_failed": {
+      "message": "De Kohler-cloud heeft de opdracht niet geaccepteerd: {error}"
+    },
+    "not_loaded": {
+      "message": "Er is geen Kohler Sensate-kraan ingesteld en actief."
+    },
+    "device_not_found": {
+      "message": "Het gekozen apparaat is geen geladen Kohler Sensate-kraan."
+    },
+    "device_required": {
+      "message": "Er is meer dan één Sensate-kraan ingesteld. Kies welke kraan moet doseren."
+    },
+    "amount_out_of_range": {
+      "message": "Kies een hoeveelheid tussen {min} en {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} is offline: de Kohler-cloud kan de kraan niet bereiken. Controleer de stroomvoorziening en wifi."
+    },
+    "rate_limited": {
+      "message": "Kohler beperkt het aantal verzoeken. Probeer het over {seconds} seconden opnieuw."
+    },
+    "preset_out_of_range": {
+      "message": "De voorinstelling \"{title}\" valt buiten het doseerbereik van 10 mL tot 4 L."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Water doseren",
+      "description": "Doseert een afgemeten hoeveelheid water uit een Sensate-kraan.",
+      "fields": {
+        "device_id": {
+          "name": "Kraan",
+          "description": "De kraan die moet doseren. Optioneel als er maar één kraan is ingesteld."
+        },
+        "amount": {
+          "name": "Hoeveelheid",
+          "description": "Hoeveel water er moet worden gedoseerd, in de gekozen eenheid (tussen 10 mL en 4 L)."
+        },
+        "unit": {
+          "name": "Eenheid",
+          "description": "Eenheid van de hoeveelheid. Standaard mL bij metrisch en fl oz bij imperiaal, volgens de opties van de integratie."
+        },
+        "amount_ml": {
+          "name": "Hoeveelheid (mL)",
+          "description": "Verouderd: hoeveel er moet worden gedoseerd, in milliliter. Gebruik dit in plaats van Hoeveelheid."
+        },
+        "amount_l": {
+          "name": "Hoeveelheid (L)",
+          "description": "Verouderd: hoeveel er moet worden gedoseerd, in liter. Gebruik dit in plaats van Hoeveelheid."
+        }
+      }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} staat niet meer in je Kohler-account",
+      "description": "Kohler toont deze kraan niet meer in je account, dus Home Assistant kan hem niet uitlezen of bedienen. Als je hem in de Konnect-app hebt verwijderd of vervangen, verwijder deze kraan dan uit Home Assistant en voeg hem opnieuw toe.\n\nLaatste fout: {error}"
+    },
+    "api_changed": {
+      "title": "Kohler blijft verzoeken voor {name} weigeren",
+      "description": "De Kohler-cloud heeft meerdere verzoeken achter elkaar geweigerd. Dat betekent meestal dat Kohler zijn API heeft gewijzigd. Kijk of er een update voor deze integratie is. Zo niet, open dan een issue en voeg de diagnostische gegevens van de integratie toe.\n\nLaatste fout: {error}"
+    }
+  }
+}

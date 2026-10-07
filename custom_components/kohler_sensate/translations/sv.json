@@ -1,0 +1,238 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Logga in med ditt Kohler Konnect-konto.",
+        "data": {
+          "username": "E-post",
+          "password": "Lösenord"
+        },
+        "data_description": {
+          "username": "E-postadressen du använder för att logga in i Kohler Konnect-appen.",
+          "password": "Ditt Kohler Konnect-lösenord. Det sparas i Home Assistant så att integrationen kan logga in igen på egen hand när Kohlers session går ut."
+        }
+      },
+      "pick_device": {
+        "title": "Välj en kran",
+        "description": "Det här kontot har mer än en Sensate-kran. Välj den du vill lägga till; du kan lägga till de andra efteråt.",
+        "data": {
+          "device_id": "Kran"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Logga in på Kohler Konnect igen",
+        "description": "Kohler godkänner inte längre det sparade lösenordet för {name}. Ange ditt nuvarande Konnect-lösenord.",
+        "data": {
+          "username": "E-post",
+          "password": "Lösenord"
+        },
+        "data_description": {
+          "username": "E-postadressen du använder för att logga in i Kohler Konnect-appen.",
+          "password": "Ditt nuvarande Kohler Konnect-lösenord."
+        }
+      },
+      "reconfigure": {
+        "title": "Uppdatera Kohler Konnect-kontot",
+        "description": "Ändra e-postadressen eller lösenordet som används för {name}. Kranen måste fortfarande tillhöra kontot.",
+        "data": {
+          "username": "E-post",
+          "password": "Lösenord"
+        },
+        "data_description": {
+          "username": "E-postadressen du använder för att logga in i Kohler Konnect-appen.",
+          "password": "Ditt Kohler Konnect-lösenord. Det sparas i Home Assistant så att integrationen kan logga in igen på egen hand när Kohlers session går ut."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ogiltig e-postadress eller ogiltigt lösenord.",
+      "cannot_connect": "Det gick inte att nå Kohlers moln. Försök igen.",
+      "no_device": "Ingen Sensate-kran hittades på det här kontot.",
+      "unknown": "Oväntat fel. Se loggarna för mer information."
+    },
+    "abort": {
+      "already_configured": "Den här kranen är redan konfigurerad.",
+      "reauth_successful": "Inloggningen lyckades.",
+      "wrong_account": "Det här kontot har inte kranen som konfigurerades. Logga in med kontot som kranen tillhör.",
+      "reconfigure_successful": "Kontot har uppdaterats."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alternativ för Kohler Sensate",
+        "data": {
+          "unit_system": "Enheter",
+          "max_run_minutes": "Säkerhetsgräns för vatten",
+          "push_updates": "Direktuppdateringar (experimentellt)"
+        },
+        "data_description": {
+          "unit_system": "Enheter för snabbtappningsknapparna, tappmängden, sensorn för senaste tappning och standardenheten för tappningsåtgärden.",
+          "max_run_minutes": "Stänger av vattnet så många minuter efter att det slagits på från Home Assistant, om det inte har stängts av under tiden. 0 stänger av gränsen.",
+          "push_updates": "Lyssnar på Kohlers realtidsflöde, precis som Konnect-appen, och uppdaterar så fort kranen ändras. Lägger till en Home Assistant-post bland aviseringsenheterna på ditt Kohler-konto. Den regelbundna avfrågningen fortsätter som reserv."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Metriskt (mL, L)",
+        "imperial": "Imperiskt (amerikanska enheter: fl oz, koppar, quarts, gallon)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Milliliter (mL)",
+        "l": "Liter (L)",
+        "fl_oz": "Vätskeuns (fl oz)",
+        "cup": "Koppar",
+        "qt": "Quarts",
+        "gal": "Gallon"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Läcka"
+      },
+      "dispensing": {
+        "name": "Tappning"
+      },
+      "connected": {
+        "name": "Ansluten"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "Tappa {amount}"
+      },
+      "dispense_quarter_cup": {
+        "name": "Tappa ¼ kopp"
+      },
+      "dispense_half_cup": {
+        "name": "Tappa ½ kopp"
+      },
+      "dispense_one_cup": {
+        "name": "Tappa 1 kopp"
+      },
+      "dispense_two_cups": {
+        "name": "Tappa 2 koppar"
+      },
+      "dispense_one_quart": {
+        "name": "Tappa 1 quart"
+      },
+      "dispense_half_gallon": {
+        "name": "Tappa ½ gallon"
+      },
+      "dispense_one_gallon": {
+        "name": "Tappa 1 gallon"
+      },
+      "dispense_set_amount": {
+        "name": "Tappa inställd mängd"
+      },
+      "clear_leak": {
+        "name": "Rensa läckagelarm"
+      },
+      "preset": {
+        "name": "Förinställning: {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Tappmängd"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "progress": {
+        "name": "Tappningsförlopp"
+      },
+      "handle_state": {
+        "name": "Handtag"
+      },
+      "last_dispense": {
+        "name": "Senast tappat"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Vatten"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kohler avvisade de sparade inloggningsuppgifterna. Logga in igen från integrationssidan."
+    },
+    "update_failed": {
+      "message": "Fel vid kommunikation med Kohlers moln: {error}"
+    },
+    "command_failed": {
+      "message": "Kohlers moln accepterade inte kommandot: {error}"
+    },
+    "not_loaded": {
+      "message": "Ingen Kohler Sensate-kran är konfigurerad och igång."
+    },
+    "device_not_found": {
+      "message": "Den valda enheten är inte en inläst Kohler Sensate-kran."
+    },
+    "device_required": {
+      "message": "Mer än en Sensate-kran är konfigurerad. Välj vilken kran som ska tappa."
+    },
+    "amount_out_of_range": {
+      "message": "Välj en mängd mellan {min} och {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} är offline: Kohlers moln når inte kranen. Kontrollera strömmen och wifi-anslutningen."
+    },
+    "rate_limited": {
+      "message": "Kohler begränsar antalet förfrågningar. Försök igen om {seconds} sekunder."
+    },
+    "preset_out_of_range": {
+      "message": "Förinställningen ”{title}” ligger utanför tappintervallet 10 mL till 4 L."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Tappa vatten",
+      "description": "Tappar upp en uppmätt mängd vatten från en Sensate-kran.",
+      "fields": {
+        "device_id": {
+          "name": "Kran",
+          "description": "Kranen som ska tappa. Valfritt när bara en kran är konfigurerad."
+        },
+        "amount": {
+          "name": "Mängd",
+          "description": "Hur mycket vatten som ska tappas, i den valda enheten (mellan 10 mL och 4 L)."
+        },
+        "unit": {
+          "name": "Enhet",
+          "description": "Mängdens enhet. Standard är mL för metriskt och fl oz för imperiskt, enligt integrationens alternativ."
+        },
+        "amount_ml": {
+          "name": "Mängd (mL)",
+          "description": "Äldre: hur mycket som ska tappas, i milliliter. Används i stället för Mängd."
+        },
+        "amount_l": {
+          "name": "Mängd (L)",
+          "description": "Äldre: hur mycket som ska tappas, i liter. Används i stället för Mängd."
+        }
+      }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} finns inte längre på ditt Kohler-konto",
+      "description": "Kohler listar inte längre den här kranen på ditt konto, så Home Assistant kan inte läsa av eller styra den. Om du har tagit bort eller bytt ut den i Konnect-appen tar du bort kranen från Home Assistant och lägger till den igen.\n\nSenaste fel: {error}"
+    },
+    "api_changed": {
+      "title": "Kohler fortsätter att avvisa förfrågningar för {name}",
+      "description": "Kohlers moln har avvisat flera förfrågningar i rad, vilket oftast betyder att Kohler har ändrat sitt API. Kontrollera om det finns en uppdatering av integrationen. Om inte, öppna ett ärende och bifoga integrationens diagnostik.\n\nSenaste fel: {error}"
+    }
+  }
+}

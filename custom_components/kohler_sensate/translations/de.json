@@ -1,0 +1,238 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Melde dich mit deinem Kohler-Konnect-Konto an.",
+        "data": {
+          "username": "E-Mail",
+          "password": "Passwort"
+        },
+        "data_description": {
+          "username": "Die E-Mail-Adresse, mit der du dich in der Kohler-Konnect-App anmeldest.",
+          "password": "Dein Kohler-Konnect-Passwort. Es wird in Home Assistant gespeichert, damit sich die Integration selbstständig neu anmelden kann, wenn Kohlers Sitzung abläuft."
+        }
+      },
+      "pick_device": {
+        "title": "Armatur auswählen",
+        "description": "Dieses Konto hat mehr als eine Sensate-Armatur. Wähle die Armatur aus, die hinzugefügt werden soll; die anderen kannst du danach hinzufügen.",
+        "data": {
+          "device_id": "Armatur"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Erneut bei Kohler Konnect anmelden",
+        "description": "Kohler akzeptiert das gespeicherte Passwort für {name} nicht mehr. Gib dein aktuelles Konnect-Passwort ein.",
+        "data": {
+          "username": "E-Mail",
+          "password": "Passwort"
+        },
+        "data_description": {
+          "username": "Die E-Mail-Adresse, mit der du dich in der Kohler-Konnect-App anmeldest.",
+          "password": "Dein aktuelles Kohler-Konnect-Passwort."
+        }
+      },
+      "reconfigure": {
+        "title": "Kohler-Konnect-Konto aktualisieren",
+        "description": "Ändere die E-Mail-Adresse oder das Passwort für {name}. Die Armatur muss weiterhin zu diesem Konto gehören.",
+        "data": {
+          "username": "E-Mail",
+          "password": "Passwort"
+        },
+        "data_description": {
+          "username": "Die E-Mail-Adresse, mit der du dich in der Kohler-Konnect-App anmeldest.",
+          "password": "Dein Kohler-Konnect-Passwort. Es wird in Home Assistant gespeichert, damit sich die Integration selbstständig neu anmelden kann, wenn Kohlers Sitzung abläuft."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Ungültige E-Mail-Adresse oder ungültiges Passwort.",
+      "cannot_connect": "Die Kohler-Cloud ist nicht erreichbar. Versuche es erneut.",
+      "no_device": "In diesem Konto wurde keine Sensate-Armatur gefunden.",
+      "unknown": "Unerwarteter Fehler. Details findest du in den Protokollen."
+    },
+    "abort": {
+      "already_configured": "Diese Armatur ist bereits eingerichtet.",
+      "reauth_successful": "Erneute Anmeldung erfolgreich.",
+      "wrong_account": "Die eingerichtete Armatur gehört nicht zu diesem Konto. Melde dich mit dem Konto an, zu dem sie gehört.",
+      "reconfigure_successful": "Konto aktualisiert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kohler-Sensate-Optionen",
+        "data": {
+          "unit_system": "Einheiten",
+          "max_run_minutes": "Wasser-Sicherheitslimit",
+          "push_updates": "Sofortige Aktualisierungen (experimentell)"
+        },
+        "data_description": {
+          "unit_system": "Einheiten für die Schnelldosier-Tasten, die Dosiermenge, den Sensor „Zuletzt dosiert“ und die Standardeinheit der Dosier-Aktion.",
+          "max_run_minutes": "Schaltet das Wasser so viele Minuten nach dem Einschalten aus Home Assistant ab, sofern es nicht zwischendurch abgeschaltet wurde. 0 deaktiviert das Limit.",
+          "push_updates": "Hört wie die Konnect-App auf Kohlers Echtzeit-Feed und aktualisiert, sobald sich die Armatur ändert. Fügt den Benachrichtigungsgeräten deines Kohler-Kontos einen Home-Assistant-Eintrag hinzu. Die regelmäßige Abfrage läuft als Rückfallebene weiter."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Metrisch (mL, L)",
+        "imperial": "Imperial (US-Einheiten: fl oz, Tassen, Quarts, Gallonen)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Milliliter (mL)",
+        "l": "Liter (L)",
+        "fl_oz": "Flüssigunzen (fl oz)",
+        "cup": "Tassen",
+        "qt": "Quarts",
+        "gal": "Gallonen"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Leck"
+      },
+      "dispensing": {
+        "name": "Dosierung"
+      },
+      "connected": {
+        "name": "Verbunden"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "{amount} dosieren"
+      },
+      "dispense_quarter_cup": {
+        "name": "¼ Tasse dosieren"
+      },
+      "dispense_half_cup": {
+        "name": "½ Tasse dosieren"
+      },
+      "dispense_one_cup": {
+        "name": "1 Tasse dosieren"
+      },
+      "dispense_two_cups": {
+        "name": "2 Tassen dosieren"
+      },
+      "dispense_one_quart": {
+        "name": "1 Quart dosieren"
+      },
+      "dispense_half_gallon": {
+        "name": "½ Gallone dosieren"
+      },
+      "dispense_one_gallon": {
+        "name": "1 Gallone dosieren"
+      },
+      "dispense_set_amount": {
+        "name": "Eingestellte Menge dosieren"
+      },
+      "clear_leak": {
+        "name": "Leckalarm zurücksetzen"
+      },
+      "preset": {
+        "name": "Voreinstellung: {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Dosiermenge"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "progress": {
+        "name": "Dosierfortschritt"
+      },
+      "handle_state": {
+        "name": "Hebel"
+      },
+      "last_dispense": {
+        "name": "Zuletzt dosiert"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Wasser"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kohler hat die gespeicherten Zugangsdaten abgelehnt. Melde dich auf der Integrationsseite erneut an."
+    },
+    "update_failed": {
+      "message": "Fehler bei der Kommunikation mit der Kohler-Cloud: {error}"
+    },
+    "command_failed": {
+      "message": "Die Kohler-Cloud hat den Befehl nicht angenommen: {error}"
+    },
+    "not_loaded": {
+      "message": "Es ist keine Kohler-Sensate-Armatur eingerichtet und aktiv."
+    },
+    "device_not_found": {
+      "message": "Das ausgewählte Gerät ist keine geladene Kohler-Sensate-Armatur."
+    },
+    "device_required": {
+      "message": "Es ist mehr als eine Sensate-Armatur eingerichtet. Wähle aus, welche Armatur dosieren soll."
+    },
+    "amount_out_of_range": {
+      "message": "Wähle eine Menge zwischen {min} und {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} ist offline: Die Kohler-Cloud erreicht die Armatur nicht. Prüfe Stromversorgung und WLAN."
+    },
+    "rate_limited": {
+      "message": "Kohler drosselt die Anfragen. Versuche es in {seconds} Sekunden erneut."
+    },
+    "preset_out_of_range": {
+      "message": "Die Voreinstellung „{title}“ liegt außerhalb des Dosierbereichs von 10 mL bis 4 L."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Wasser dosieren",
+      "description": "Gibt eine abgemessene Menge Wasser aus einer Sensate-Armatur aus.",
+      "fields": {
+        "device_id": {
+          "name": "Armatur",
+          "description": "Die Armatur, die dosieren soll. Optional, wenn nur eine Armatur eingerichtet ist."
+        },
+        "amount": {
+          "name": "Menge",
+          "description": "Wie viel Wasser dosiert werden soll, in der gewählten Einheit (zwischen 10 mL und 4 L)."
+        },
+        "unit": {
+          "name": "Einheit",
+          "description": "Einheit der Menge. Standard ist mL bei metrischen und fl oz bei imperialen Einheiten, gemäß den Optionen der Integration."
+        },
+        "amount_ml": {
+          "name": "Menge (mL)",
+          "description": "Veraltet: Wie viel dosiert werden soll, in Millilitern. Alternative zu „Menge“."
+        },
+        "amount_l": {
+          "name": "Menge (L)",
+          "description": "Veraltet: Wie viel dosiert werden soll, in Litern. Alternative zu „Menge“."
+        }
+      }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} ist nicht mehr in deinem Kohler-Konto",
+      "description": "Kohler führt diese Armatur nicht mehr in deinem Konto, daher kann Home Assistant sie weder auslesen noch steuern. Wenn du sie in der Konnect-App entfernt oder ersetzt hast, lösche diese Armatur aus Home Assistant und füge sie erneut hinzu.\n\nLetzter Fehler: {error}"
+    },
+    "api_changed": {
+      "title": "Kohler lehnt Anfragen für {name} weiterhin ab",
+      "description": "Die Kohler-Cloud hat mehrere Anfragen nacheinander abgelehnt. Das bedeutet meist, dass Kohler seine API geändert hat. Prüfe, ob es ein Update für diese Integration gibt. Falls nicht, eröffne ein Issue und hänge die Diagnosedaten der Integration an.\n\nLetzter Fehler: {error}"
+    }
+  }
+}

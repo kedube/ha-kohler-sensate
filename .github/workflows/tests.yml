@@ -13,8 +13,8 @@ jobs:
     name: Ruff
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/ruff-action@v3
+      - uses: actions/checkout@v7
+      - uses: astral-sh/ruff-action@v4.1.0
       - run: ruff format --check
 
   pytest:
@@ -26,17 +26,14 @@ jobs:
         include:
           # Latest Home Assistant.
           - name: latest HA
-            python: "3.14"
             harness: pytest-homeassistant-custom-component
-          # Minimum supported version, matching hacs.json (HA 2025.8.3).
-          - name: HA 2025.8
-            python: "3.13"
-            # HA 2025.8's aiodns needs pycares 4.x.
-            harness: pytest-homeassistant-custom-component==0.13.272 pycares==4.11.0
+          # Minimum supported version, matching hacs.json (HA 2026.3.4).
+          - name: HA 2026.3
+            harness: pytest-homeassistant-custom-component==0.13.320
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.14"
       - run: pip install ${{ matrix.harness }}
       - run: pytest

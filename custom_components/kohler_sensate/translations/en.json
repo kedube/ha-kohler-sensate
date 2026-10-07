@@ -79,7 +79,7 @@
     "unit_system": {
       "options": {
         "metric": "Metric (mL, L)",
-        "imperial": "Imperial (fl oz, cups, quarts, gallons)"
+        "imperial": "Imperial (US fl oz, cups, quarts, gallons)"
       }
     },
     "volume_unit": {

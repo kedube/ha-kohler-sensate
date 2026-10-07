@@ -36,8 +36,11 @@
   status/progress/handle value seen, presets, and the instant-updates state.
 - `recon/faucet_probe.py` prints Kohler's full error replies and tries
   common parameters for the undocumented water-usage endpoint.
-- Translated entity names, errors and icons; Spanish updated.
-- A test suite that runs against the latest Home Assistant and 2025.8, plus a Ruff
+- Translated entity names, errors and icons, in Dutch, French, German,
+  Italian, Polish, Brazilian Portuguese and Swedish (new) and Spanish
+  (updated). A test checks that every language has the same keys and
+  placeholders as the English strings.
+- A test suite that runs against the latest Home Assistant and 2026.3, plus a Ruff
   lint workflow.
 
 ### Fixed
@@ -78,7 +81,8 @@
   shower library; the integration now has its own small client and uses Home
   Assistant's shared HTTP session.
 - The config entry stores the faucet's device ID. 0.1 entries keep working.
-- Minimum Home Assistant version is 2025.8.0.
+- Minimum Home Assistant version is 2026.3.0 (was 2024.8.0), the first
+  release that shows the integration's own icon and logo.
 - New requirement `paho-mqtt` (already bundled with Home Assistant), used only
   when instant updates are on.
 

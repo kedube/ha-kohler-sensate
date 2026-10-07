@@ -148,7 +148,7 @@ class _Token:
 def _token_from_response(payload: dict[str, Any]) -> _Token:
     try:
         lifetime = float(payload.get("expires_in") or DEFAULT_TOKEN_LIFETIME)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         lifetime = DEFAULT_TOKEN_LIFETIME
     margin = min(TOKEN_REFRESH_MARGIN, lifetime / 2)
     return _Token(
@@ -164,7 +164,7 @@ def decode_tenant_id(access_token: str) -> str | None:
         segment = access_token.split(".")[1]
         segment += "=" * (-len(segment) % 4)
         claims = json.loads(base64.urlsafe_b64decode(segment))
-    except (IndexError, ValueError, binascii.Error):
+    except IndexError, ValueError, binascii.Error:
         return None
     if not isinstance(claims, dict):
         return None
@@ -208,7 +208,7 @@ def _retry_after(response: aiohttp.ClientResponse) -> float | None:
         pass
     try:
         return max(0.0, parsedate_to_datetime(header).timestamp() - time.time())
-    except (TypeError, ValueError, OverflowError):
+    except TypeError, ValueError, OverflowError:
         return None
 
 

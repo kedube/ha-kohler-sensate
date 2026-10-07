@@ -1,0 +1,238 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Connectez-vous avec votre compte Kohler Konnect.",
+        "data": {
+          "username": "E-mail",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "L'adresse e-mail que vous utilisez pour vous connecter à l'application Kohler Konnect.",
+          "password": "Votre mot de passe Kohler Konnect. Il est enregistré dans Home Assistant afin que l'intégration puisse se reconnecter d'elle-même lorsque la session Kohler expire."
+        }
+      },
+      "pick_device": {
+        "title": "Choisir un robinet",
+        "description": "Ce compte possède plusieurs robinets Sensate. Choisissez celui à ajouter ; vous pourrez ajouter les autres ensuite.",
+        "data": {
+          "device_id": "Robinet"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Se reconnecter à Kohler Konnect",
+        "description": "Kohler n'accepte plus le mot de passe enregistré pour {name}. Saisissez votre mot de passe Konnect actuel.",
+        "data": {
+          "username": "E-mail",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "L'adresse e-mail que vous utilisez pour vous connecter à l'application Kohler Konnect.",
+          "password": "Votre mot de passe Kohler Konnect actuel."
+        }
+      },
+      "reconfigure": {
+        "title": "Mettre à jour le compte Kohler Konnect",
+        "description": "Modifiez l'adresse e-mail ou le mot de passe utilisé pour {name}. Ce robinet doit toujours appartenir au compte.",
+        "data": {
+          "username": "E-mail",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "L'adresse e-mail que vous utilisez pour vous connecter à l'application Kohler Konnect.",
+          "password": "Votre mot de passe Kohler Konnect. Il est enregistré dans Home Assistant afin que l'intégration puisse se reconnecter d'elle-même lorsque la session Kohler expire."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Adresse e-mail ou mot de passe incorrect.",
+      "cannot_connect": "Impossible de joindre le cloud Kohler. Réessayez.",
+      "no_device": "Aucun robinet Sensate n'a été trouvé sur ce compte.",
+      "unknown": "Erreur inattendue. Consultez les journaux pour plus de détails."
+    },
+    "abort": {
+      "already_configured": "Ce robinet est déjà configuré.",
+      "reauth_successful": "Reconnexion réussie.",
+      "wrong_account": "Ce compte ne possède pas le robinet configuré. Connectez-vous avec le compte auquel il appartient.",
+      "reconfigure_successful": "Compte mis à jour."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Kohler Sensate",
+        "data": {
+          "unit_system": "Unités",
+          "max_run_minutes": "Limite de sécurité de l'eau",
+          "push_updates": "Mises à jour instantanées (expérimental)"
+        },
+        "data_description": {
+          "unit_system": "Unités des boutons de distribution rapide, de la quantité à distribuer, du capteur de dernière distribution et de l'unité par défaut de l'action de distribution.",
+          "max_run_minutes": "Coupe l'eau ce nombre de minutes après son ouverture depuis Home Assistant, sauf si elle a été coupée entre-temps. 0 désactive la limite.",
+          "push_updates": "Écoute le flux en temps réel de Kohler, comme l'application Konnect, et met à jour dès que le robinet change. Ajoute une entrée Home Assistant aux appareils de notification de votre compte Kohler. L'interrogation périodique continue en secours."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Métrique (mL, L)",
+        "imperial": "Impérial (unités américaines : fl oz, tasses, quarts, gallons)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Millilitres (mL)",
+        "l": "Litres (L)",
+        "fl_oz": "Onces liquides (fl oz)",
+        "cup": "Tasses",
+        "qt": "Quarts",
+        "gal": "Gallons"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Fuite"
+      },
+      "dispensing": {
+        "name": "Distribution"
+      },
+      "connected": {
+        "name": "Connecté"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "Distribuer {amount}"
+      },
+      "dispense_quarter_cup": {
+        "name": "Distribuer ¼ de tasse"
+      },
+      "dispense_half_cup": {
+        "name": "Distribuer ½ tasse"
+      },
+      "dispense_one_cup": {
+        "name": "Distribuer 1 tasse"
+      },
+      "dispense_two_cups": {
+        "name": "Distribuer 2 tasses"
+      },
+      "dispense_one_quart": {
+        "name": "Distribuer 1 quart"
+      },
+      "dispense_half_gallon": {
+        "name": "Distribuer ½ gallon"
+      },
+      "dispense_one_gallon": {
+        "name": "Distribuer 1 gallon"
+      },
+      "dispense_set_amount": {
+        "name": "Distribuer la quantité définie"
+      },
+      "clear_leak": {
+        "name": "Effacer l'alerte de fuite"
+      },
+      "preset": {
+        "name": "Préréglage : {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Quantité à distribuer"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "État"
+      },
+      "progress": {
+        "name": "Progression de la distribution"
+      },
+      "handle_state": {
+        "name": "Manette"
+      },
+      "last_dispense": {
+        "name": "Dernière distribution"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Eau"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kohler a refusé les identifiants enregistrés. Reconnectez-vous depuis la page de l'intégration."
+    },
+    "update_failed": {
+      "message": "Erreur de communication avec le cloud Kohler : {error}"
+    },
+    "command_failed": {
+      "message": "Le cloud Kohler n'a pas accepté la commande : {error}"
+    },
+    "not_loaded": {
+      "message": "Aucun robinet Kohler Sensate n'est configuré et en fonctionnement."
+    },
+    "device_not_found": {
+      "message": "L'appareil sélectionné n'est pas un robinet Kohler Sensate chargé."
+    },
+    "device_required": {
+      "message": "Plusieurs robinets Sensate sont configurés. Choisissez celui qui doit distribuer l'eau."
+    },
+    "amount_out_of_range": {
+      "message": "Choisissez une quantité entre {min} et {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} est hors ligne : le cloud Kohler ne parvient pas à joindre le robinet. Vérifiez son alimentation et son Wi-Fi."
+    },
+    "rate_limited": {
+      "message": "Kohler limite les requêtes. Réessayez dans {seconds} secondes."
+    },
+    "preset_out_of_range": {
+      "message": "Le préréglage « {title} » est en dehors de la plage de distribution de 10 mL à 4 L."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Distribuer de l'eau",
+      "description": "Distribue une quantité mesurée d'eau depuis un robinet Sensate.",
+      "fields": {
+        "device_id": {
+          "name": "Robinet",
+          "description": "Le robinet qui doit distribuer l'eau. Facultatif si un seul robinet est configuré."
+        },
+        "amount": {
+          "name": "Quantité",
+          "description": "Quantité d'eau à distribuer, dans l'unité choisie (entre 10 mL et 4 L)."
+        },
+        "unit": {
+          "name": "Unité",
+          "description": "Unité de la quantité. Par défaut, mL en métrique et fl oz en impérial, selon les options de l'intégration."
+        },
+        "amount_ml": {
+          "name": "Quantité (mL)",
+          "description": "Ancien format : quantité à distribuer, en millilitres. À utiliser à la place de Quantité."
+        },
+        "amount_l": {
+          "name": "Quantité (L)",
+          "description": "Ancien format : quantité à distribuer, en litres. À utiliser à la place de Quantité."
+        }
+      }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} ne figure plus sur votre compte Kohler",
+      "description": "Kohler ne répertorie plus ce robinet sur votre compte : Home Assistant ne peut donc plus le lire ni le contrôler. Si vous l'avez retiré ou remplacé dans l'application Konnect, supprimez ce robinet de Home Assistant puis ajoutez-le à nouveau.\n\nDernière erreur : {error}"
+    },
+    "api_changed": {
+      "title": "Kohler continue de refuser les requêtes pour {name}",
+      "description": "Le cloud Kohler a refusé plusieurs requêtes d'affilée, ce qui signifie généralement que Kohler a modifié son API. Vérifiez si une mise à jour de cette intégration est disponible. Sinon, ouvrez un ticket et joignez les diagnostics de l'intégration.\n\nDernière erreur : {error}"
+    }
+  }
+}

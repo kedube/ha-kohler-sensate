@@ -64,5 +64,6 @@ async def async_get_config_entry_diagnostics(
             "messages_for_this_faucet": push.messages,
             "verified": coordinator.push_verified,
             "last_error": push.last_error,
+            "next_retry_at": push.next_retry_at,
         },
     }

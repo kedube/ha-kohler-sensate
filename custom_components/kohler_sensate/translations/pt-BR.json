@@ -1,0 +1,238 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Entre com sua conta Kohler Konnect.",
+        "data": {
+          "username": "E-mail",
+          "password": "Senha"
+        },
+        "data_description": {
+          "username": "O e-mail que você usa para entrar no app Kohler Konnect.",
+          "password": "Sua senha do Kohler Konnect. Ela fica salva no Home Assistant para que a integração possa entrar novamente sozinha quando a sessão da Kohler expirar."
+        }
+      },
+      "pick_device": {
+        "title": "Escolha uma torneira",
+        "description": "Esta conta tem mais de uma torneira Sensate. Escolha a que deseja adicionar; você pode adicionar as outras depois.",
+        "data": {
+          "device_id": "Torneira"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Entre novamente no Kohler Konnect",
+        "description": "A Kohler não aceita mais a senha salva para {name}. Digite sua senha atual do Konnect.",
+        "data": {
+          "username": "E-mail",
+          "password": "Senha"
+        },
+        "data_description": {
+          "username": "O e-mail que você usa para entrar no app Kohler Konnect.",
+          "password": "Sua senha atual do Kohler Konnect."
+        }
+      },
+      "reconfigure": {
+        "title": "Atualizar a conta Kohler Konnect",
+        "description": "Altere o e-mail ou a senha usados para {name}. A torneira ainda precisa pertencer a esta conta.",
+        "data": {
+          "username": "E-mail",
+          "password": "Senha"
+        },
+        "data_description": {
+          "username": "O e-mail que você usa para entrar no app Kohler Konnect.",
+          "password": "Sua senha do Kohler Konnect. Ela fica salva no Home Assistant para que a integração possa entrar novamente sozinha quando a sessão da Kohler expirar."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "E-mail ou senha inválidos.",
+      "cannot_connect": "Não foi possível acessar a nuvem da Kohler. Tente novamente.",
+      "no_device": "Nenhuma torneira Sensate foi encontrada nesta conta.",
+      "unknown": "Erro inesperado. Verifique os logs para mais detalhes."
+    },
+    "abort": {
+      "already_configured": "Esta torneira já está configurada.",
+      "reauth_successful": "Login refeito com sucesso.",
+      "wrong_account": "Esta conta não tem a torneira que foi configurada. Entre com a conta à qual ela pertence.",
+      "reconfigure_successful": "Conta atualizada."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opções do Kohler Sensate",
+        "data": {
+          "unit_system": "Unidades",
+          "max_run_minutes": "Limite de segurança da água",
+          "push_updates": "Atualizações instantâneas (experimental)"
+        },
+        "data_description": {
+          "unit_system": "Unidades dos botões de dosagem rápida, da quantidade a dosar, do sensor da última dosagem e unidade padrão da ação de dosar.",
+          "max_run_minutes": "Fecha a água este número de minutos depois de ela ser aberta pelo Home Assistant, a menos que tenha sido fechada nesse meio-tempo. 0 desativa o limite.",
+          "push_updates": "Escuta o canal em tempo real da Kohler, como o app Konnect, e atualiza assim que a torneira muda. Adiciona uma entrada do Home Assistant aos dispositivos de notificação da sua conta Kohler. A consulta periódica continua como reserva."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Métrico (mL, L)",
+        "imperial": "Imperial (unidades dos EUA: fl oz, xícaras, quartos, galões)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Mililitros (mL)",
+        "l": "Litros (L)",
+        "fl_oz": "Onças fluidas (fl oz)",
+        "cup": "Xícaras",
+        "qt": "Quartos de galão",
+        "gal": "Galões"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Vazamento"
+      },
+      "dispensing": {
+        "name": "Dosando"
+      },
+      "connected": {
+        "name": "Conectado"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "Dosar {amount}"
+      },
+      "dispense_quarter_cup": {
+        "name": "Dosar ¼ de xícara"
+      },
+      "dispense_half_cup": {
+        "name": "Dosar ½ xícara"
+      },
+      "dispense_one_cup": {
+        "name": "Dosar 1 xícara"
+      },
+      "dispense_two_cups": {
+        "name": "Dosar 2 xícaras"
+      },
+      "dispense_one_quart": {
+        "name": "Dosar 1 quarto de galão"
+      },
+      "dispense_half_gallon": {
+        "name": "Dosar ½ galão"
+      },
+      "dispense_one_gallon": {
+        "name": "Dosar 1 galão"
+      },
+      "dispense_set_amount": {
+        "name": "Dosar quantidade definida"
+      },
+      "clear_leak": {
+        "name": "Limpar alerta de vazamento"
+      },
+      "preset": {
+        "name": "Predefinição: {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Quantidade a dosar"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "progress": {
+        "name": "Progresso da dosagem"
+      },
+      "handle_state": {
+        "name": "Alavanca"
+      },
+      "last_dispense": {
+        "name": "Última dosagem"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Água"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "A Kohler recusou as credenciais salvas. Entre novamente pela página da integração."
+    },
+    "update_failed": {
+      "message": "Erro ao se comunicar com a nuvem da Kohler: {error}"
+    },
+    "command_failed": {
+      "message": "A nuvem da Kohler não aceitou o comando: {error}"
+    },
+    "not_loaded": {
+      "message": "Nenhuma torneira Kohler Sensate está configurada e em funcionamento."
+    },
+    "device_not_found": {
+      "message": "O dispositivo selecionado não é uma torneira Kohler Sensate carregada."
+    },
+    "device_required": {
+      "message": "Há mais de uma torneira Sensate configurada. Escolha qual torneira deve dosar."
+    },
+    "amount_out_of_range": {
+      "message": "Escolha uma quantidade entre {min} e {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} está offline: a nuvem da Kohler não consegue alcançar a torneira. Verifique a alimentação e o Wi-Fi."
+    },
+    "rate_limited": {
+      "message": "A Kohler está limitando as solicitações. Tente novamente em {seconds} segundos."
+    },
+    "preset_out_of_range": {
+      "message": "A predefinição \"{title}\" está fora da faixa de dosagem de 10 mL a 4 L."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Dosar água",
+      "description": "Dosa uma quantidade medida de água de uma torneira Sensate.",
+      "fields": {
+        "device_id": {
+          "name": "Torneira",
+          "description": "A torneira que vai dosar. Opcional quando há apenas uma torneira configurada."
+        },
+        "amount": {
+          "name": "Quantidade",
+          "description": "Quanta água dosar, na unidade escolhida (entre 10 mL e 4 L)."
+        },
+        "unit": {
+          "name": "Unidade",
+          "description": "Unidade da quantidade. O padrão é mL no sistema métrico e fl oz no imperial, conforme as opções da integração."
+        },
+        "amount_ml": {
+          "name": "Quantidade (mL)",
+          "description": "Legado: quanta água dosar, em mililitros. Use no lugar de Quantidade."
+        },
+        "amount_l": {
+          "name": "Quantidade (L)",
+          "description": "Legado: quanta água dosar, em litros. Use no lugar de Quantidade."
+        }
+      }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} não está mais na sua conta Kohler",
+      "description": "A Kohler não lista mais esta torneira na sua conta, então o Home Assistant não consegue lê-la nem controlá-la. Se você a removeu ou substituiu no app Konnect, exclua esta torneira do Home Assistant e adicione-a novamente.\n\nÚltimo erro: {error}"
+    },
+    "api_changed": {
+      "title": "A Kohler continua recusando solicitações para {name}",
+      "description": "A nuvem da Kohler recusou várias solicitações seguidas, o que geralmente significa que a Kohler mudou sua API. Verifique se há uma atualização desta integração. Se não houver, abra um chamado e anexe o diagnóstico da integração.\n\nÚltimo erro: {error}"
+    }
+  }
+}

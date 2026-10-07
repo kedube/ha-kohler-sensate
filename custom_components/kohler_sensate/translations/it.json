@@ -1,0 +1,238 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Accedi con il tuo account Kohler Konnect.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "L'indirizzo email che usi per accedere all'app Kohler Konnect.",
+          "password": "La tua password Kohler Konnect. Viene salvata in Home Assistant affinché l'integrazione possa accedere di nuovo da sola quando la sessione Kohler scade."
+        }
+      },
+      "pick_device": {
+        "title": "Scegli un rubinetto",
+        "description": "Questo account ha più di un rubinetto Sensate. Scegli quello da aggiungere; potrai aggiungere gli altri in seguito.",
+        "data": {
+          "device_id": "Rubinetto"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Accedi di nuovo a Kohler Konnect",
+        "description": "Kohler non accetta più la password salvata per {name}. Inserisci la tua password Konnect attuale.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "L'indirizzo email che usi per accedere all'app Kohler Konnect.",
+          "password": "La tua password Kohler Konnect attuale."
+        }
+      },
+      "reconfigure": {
+        "title": "Aggiorna l'account Kohler Konnect",
+        "description": "Modifica l'email o la password usate per {name}. Il rubinetto deve appartenere ancora a questo account.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "L'indirizzo email che usi per accedere all'app Kohler Konnect.",
+          "password": "La tua password Kohler Konnect. Viene salvata in Home Assistant affinché l'integrazione possa accedere di nuovo da sola quando la sessione Kohler scade."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Email o password non validi.",
+      "cannot_connect": "Impossibile raggiungere il cloud Kohler. Riprova.",
+      "no_device": "Nessun rubinetto Sensate trovato in questo account.",
+      "unknown": "Errore imprevisto. Controlla i log per i dettagli."
+    },
+    "abort": {
+      "already_configured": "Questo rubinetto è già configurato.",
+      "reauth_successful": "Nuovo accesso effettuato correttamente.",
+      "wrong_account": "Questo account non ha il rubinetto configurato. Accedi con l'account a cui appartiene.",
+      "reconfigure_successful": "Account aggiornato."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni Kohler Sensate",
+        "data": {
+          "unit_system": "Unità",
+          "max_run_minutes": "Limite di sicurezza dell'acqua",
+          "push_updates": "Aggiornamenti istantanei (sperimentale)"
+        },
+        "data_description": {
+          "unit_system": "Unità per i pulsanti di erogazione rapida, la quantità da erogare, il sensore dell'ultima erogazione e l'unità predefinita dell'azione di erogazione.",
+          "max_run_minutes": "Chiude l'acqua questo numero di minuti dopo che è stata aperta da Home Assistant, a meno che nel frattempo non sia già stata chiusa. 0 disattiva il limite.",
+          "push_updates": "Ascolta il flusso in tempo reale di Kohler, come fa l'app Konnect, e aggiorna non appena il rubinetto cambia. Aggiunge una voce Home Assistant ai dispositivi di notifica del tuo account Kohler. L'interrogazione periodica continua come riserva."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Metrico (mL, L)",
+        "imperial": "Imperiale (unità USA: fl oz, tazze, quarti, galloni)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Millilitri (mL)",
+        "l": "Litri (L)",
+        "fl_oz": "Once liquide (fl oz)",
+        "cup": "Tazze",
+        "qt": "Quarti di gallone",
+        "gal": "Galloni"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Perdita"
+      },
+      "dispensing": {
+        "name": "Erogazione"
+      },
+      "connected": {
+        "name": "Connesso"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "Eroga {amount}"
+      },
+      "dispense_quarter_cup": {
+        "name": "Eroga ¼ di tazza"
+      },
+      "dispense_half_cup": {
+        "name": "Eroga ½ tazza"
+      },
+      "dispense_one_cup": {
+        "name": "Eroga 1 tazza"
+      },
+      "dispense_two_cups": {
+        "name": "Eroga 2 tazze"
+      },
+      "dispense_one_quart": {
+        "name": "Eroga 1 quarto di gallone"
+      },
+      "dispense_half_gallon": {
+        "name": "Eroga ½ gallone"
+      },
+      "dispense_one_gallon": {
+        "name": "Eroga 1 gallone"
+      },
+      "dispense_set_amount": {
+        "name": "Eroga la quantità impostata"
+      },
+      "clear_leak": {
+        "name": "Cancella avviso di perdita"
+      },
+      "preset": {
+        "name": "Preimpostazione: {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Quantità da erogare"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Stato"
+      },
+      "progress": {
+        "name": "Avanzamento erogazione"
+      },
+      "handle_state": {
+        "name": "Leva"
+      },
+      "last_dispense": {
+        "name": "Ultima erogazione"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Acqua"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kohler ha rifiutato le credenziali salvate. Accedi di nuovo dalla pagina dell'integrazione."
+    },
+    "update_failed": {
+      "message": "Errore di comunicazione con il cloud Kohler: {error}"
+    },
+    "command_failed": {
+      "message": "Il cloud Kohler non ha accettato il comando: {error}"
+    },
+    "not_loaded": {
+      "message": "Nessun rubinetto Kohler Sensate è configurato e attivo."
+    },
+    "device_not_found": {
+      "message": "Il dispositivo selezionato non è un rubinetto Kohler Sensate caricato."
+    },
+    "device_required": {
+      "message": "È configurato più di un rubinetto Sensate. Scegli quale rubinetto deve erogare."
+    },
+    "amount_out_of_range": {
+      "message": "Scegli una quantità tra {min} e {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} è offline: il cloud Kohler non riesce a raggiungere il rubinetto. Controlla l'alimentazione e il Wi-Fi."
+    },
+    "rate_limited": {
+      "message": "Kohler sta limitando le richieste. Riprova tra {seconds} secondi."
+    },
+    "preset_out_of_range": {
+      "message": "La preimpostazione \"{title}\" è fuori dall'intervallo di erogazione da 10 mL a 4 L."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Eroga acqua",
+      "description": "Eroga una quantità misurata di acqua da un rubinetto Sensate.",
+      "fields": {
+        "device_id": {
+          "name": "Rubinetto",
+          "description": "Il rubinetto da cui erogare. Facoltativo se è configurato un solo rubinetto."
+        },
+        "amount": {
+          "name": "Quantità",
+          "description": "Quanta acqua erogare, nell'unità scelta (tra 10 mL e 4 L)."
+        },
+        "unit": {
+          "name": "Unità",
+          "description": "Unità della quantità. Per impostazione predefinita mL con il sistema metrico e fl oz con quello imperiale, secondo le opzioni dell'integrazione."
+        },
+        "amount_ml": {
+          "name": "Quantità (mL)",
+          "description": "Obsoleto: quanta acqua erogare, in millilitri. Da usare al posto di Quantità."
+        },
+        "amount_l": {
+          "name": "Quantità (L)",
+          "description": "Obsoleto: quanta acqua erogare, in litri. Da usare al posto di Quantità."
+        }
+      }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} non è più nel tuo account Kohler",
+      "description": "Kohler non elenca più questo rubinetto nel tuo account, quindi Home Assistant non può leggerlo né controllarlo. Se lo hai rimosso o sostituito nell'app Konnect, elimina questo rubinetto da Home Assistant e aggiungilo di nuovo.\n\nUltimo errore: {error}"
+    },
+    "api_changed": {
+      "title": "Kohler continua a rifiutare le richieste per {name}",
+      "description": "Il cloud Kohler ha rifiutato diverse richieste di seguito: di solito significa che Kohler ha modificato la sua API. Verifica se è disponibile un aggiornamento di questa integrazione. In caso contrario, apri una segnalazione e allega la diagnostica dell'integrazione.\n\nUltimo errore: {error}"
+    }
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kohler Sensate",
+        "description": "Zaloguj się na swoje konto Kohler Konnect.",
+        "data": {
+          "username": "E-mail",
+          "password": "Hasło"
+        },
+        "data_description": {
+          "username": "Adres e-mail, którego używasz do logowania w aplikacji Kohler Konnect.",
+          "password": "Twoje hasło do Kohler Konnect. Jest przechowywane w Home Assistant, aby integracja mogła sama zalogować się ponownie, gdy sesja Kohler wygaśnie."
+        }
+      },
+      "pick_device": {
+        "title": "Wybierz kran",
+        "description": "To konto ma więcej niż jeden kran Sensate. Wybierz ten, który chcesz dodać; pozostałe możesz dodać później.",
+        "data": {
+          "device_id": "Kran"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Zaloguj się ponownie do Kohler Konnect",
+        "description": "Kohler nie akceptuje już zapisanego hasła do urządzenia {name}. Wprowadź swoje aktualne hasło do Konnect.",
+        "data": {
+          "username": "E-mail",
+          "password": "Hasło"
+        },
+        "data_description": {
+          "username": "Adres e-mail, którego używasz do logowania w aplikacji Kohler Konnect.",
+          "password": "Twoje aktualne hasło do Kohler Konnect."
+        }
+      },
+      "reconfigure": {
+        "title": "Zaktualizuj konto Kohler Konnect",
+        "description": "Zmień adres e-mail lub hasło używane przez urządzenie {name}. Ten kran musi nadal należeć do konta.",
+        "data": {
+          "username": "E-mail",
+          "password": "Hasło"
+        },
+        "data_description": {
+          "username": "Adres e-mail, którego używasz do logowania w aplikacji Kohler Konnect.",
+          "password": "Twoje hasło do Kohler Konnect. Jest przechowywane w Home Assistant, aby integracja mogła sama zalogować się ponownie, gdy sesja Kohler wygaśnie."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nieprawidłowy adres e-mail lub hasło.",
+      "cannot_connect": "Nie można połączyć się z chmurą Kohler. Spróbuj ponownie.",
+      "no_device": "Na tym koncie nie znaleziono kranu Sensate.",
+      "unknown": "Nieoczekiwany błąd. Szczegóły znajdziesz w logach."
+    },
+    "abort": {
+      "already_configured": "Ten kran jest już skonfigurowany.",
+      "reauth_successful": "Ponowne logowanie powiodło się.",
+      "wrong_account": "To konto nie ma skonfigurowanego kranu. Zaloguj się na konto, do którego należy kran.",
+      "reconfigure_successful": "Konto zostało zaktualizowane."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje Kohler Sensate",
+        "data": {
+          "unit_system": "Jednostki",
+          "max_run_minutes": "Limit bezpieczeństwa wody",
+          "push_updates": "Natychmiastowe aktualizacje (eksperymentalne)"
+        },
+        "data_description": {
+          "unit_system": "Jednostki przycisków szybkiego nalewania, ilości do nalania i sensora ostatniego nalewania oraz domyślna jednostka akcji nalewania.",
+          "max_run_minutes": "Zakręca wodę po tylu minutach od jej odkręcenia z Home Assistant, chyba że w międzyczasie została zakręcona. 0 wyłącza limit.",
+          "push_updates": "Nasłuchuje kanału czasu rzeczywistego Kohler, tak jak aplikacja Konnect, i aktualizuje stan, gdy tylko kran się zmieni. Dodaje wpis Home Assistant do urządzeń powiadomień na Twoim koncie Kohler. Okresowe odpytywanie działa dalej jako zabezpieczenie."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Metryczne (mL, L)",
+        "imperial": "Imperialne (jednostki USA: fl oz, szklanki, kwarty, galony)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Mililitry (mL)",
+        "l": "Litry (L)",
+        "fl_oz": "Uncje płynu (fl oz)",
+        "cup": "Szklanki",
+        "qt": "Kwarty",
+        "gal": "Galony"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Wyciek"
+      },
+      "dispensing": {
+        "name": "Nalewanie"
+      },
+      "connected": {
+        "name": "Połączenie"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "Nalej {amount}"
+      },
+      "dispense_quarter_cup": {
+        "name": "Nalej ¼ szklanki"
+      },
+      "dispense_half_cup": {
+        "name": "Nalej ½ szklanki"
+      },
+      "dispense_one_cup": {
+        "name": "Nalej 1 szklankę"
+      },
+      "dispense_two_cups": {
+        "name": "Nalej 2 szklanki"
+      },
+      "dispense_one_quart": {
+        "name": "Nalej 1 kwartę"
+      },
+      "dispense_half_gallon": {
+        "name": "Nalej ½ galona"
+      },
+      "dispense_one_gallon": {
+        "name": "Nalej 1 galon"
+      },
+      "dispense_set_amount": {
+        "name": "Nalej ustawioną ilość"
+      },
+      "clear_leak": {
+        "name": "Wyczyść alert wycieku"
+      },
+      "preset": {
+        "name": "Ustawienie wstępne: {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Ilość do nalania"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "progress": {
+        "name": "Postęp nalewania"
+      },
+      "handle_state": {
+        "name": "Dźwignia"
+      },
+      "last_dispense": {
+        "name": "Ostatnio nalano"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Woda"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kohler odrzucił zapisane dane logowania. Zaloguj się ponownie na stronie integracji."
+    },
+    "update_failed": {
+      "message": "Błąd komunikacji z chmurą Kohler: {error}"
+    },
+    "command_failed": {
+      "message": "Chmura Kohler nie przyjęła polecenia: {error}"
+    },
+    "not_loaded": {
+      "message": "Żaden kran Kohler Sensate nie jest skonfigurowany i uruchomiony."
+    },
+    "device_not_found": {
+      "message": "Wybrane urządzenie nie jest załadowanym kranem Kohler Sensate."
+    },
+    "device_required": {
+      "message": "Skonfigurowano więcej niż jeden kran Sensate. Wybierz, z którego kranu nalać wodę."
+    },
+    "amount_out_of_range": {
+      "message": "Wybierz ilość od {min} do {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} jest offline: chmura Kohler nie może połączyć się z kranem. Sprawdź jego zasilanie i Wi-Fi."
+    },
+    "rate_limited": {
+      "message": "Kohler ogranicza liczbę żądań. Spróbuj ponownie za {seconds} s."
+    },
+    "preset_out_of_range": {
+      "message": "Ustawienie wstępne „{title}” wykracza poza zakres nalewania od 10 mL do 4 L."
+    }
+  },
+  "services": {
+    "dispense": {
+      "name": "Nalej wodę",
+      "description": "Nalewa odmierzoną ilość wody z kranu Sensate.",
+      "fields": {
+        "device_id": {
+          "name": "Kran",
+          "description": "Kran, z którego nalać wodę. Opcjonalne, gdy skonfigurowano tylko jeden kran."
+        },
+        "amount": {
+          "name": "Ilość",
+          "description": "Ile wody nalać, w wybranej jednostce (od 10 mL do 4 L)."
+        },
+        "unit": {
+          "name": "Jednostka",
+          "description": "Jednostka ilości. Domyślnie mL dla jednostek metrycznych i fl oz dla imperialnych, zgodnie z opcjami integracji."
+        },
+        "amount_ml": {
+          "name": "Ilość (mL)",
+          "description": "Przestarzałe: ile wody nalać, w mililitrach. Używaj zamiast pola Ilość."
+        },
+        "amount_l": {
+          "name": "Ilość (L)",
+          "description": "Przestarzałe: ile wody nalać, w litrach. Używaj zamiast pola Ilość."
+        }
+      }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} nie jest już na Twoim koncie Kohler",
+      "description": "Kohler nie wyświetla już tego kranu na Twoim koncie, więc Home Assistant nie może go odczytywać ani nim sterować. Jeśli usunięto go lub wymieniono w aplikacji Konnect, usuń ten kran z Home Assistant i dodaj go ponownie.\n\nOstatni błąd: {error}"
+    },
+    "api_changed": {
+      "title": "Kohler nadal odrzuca żądania dotyczące urządzenia {name}",
+      "description": "Chmura Kohler odrzuciła kilka żądań z rzędu, co zwykle oznacza, że Kohler zmienił swoje API. Sprawdź, czy jest dostępna aktualizacja tej integracji. Jeśli nie, zgłoś problem i dołącz diagnostykę integracji.\n\nOstatni błąd: {error}"
+    }
+  }
+}

@@ -82,6 +82,8 @@ class SensatePush:
         self.messages = 0
         self.last_message_at: float | None = None
         self.last_error: str | None = None
+        # Wall-clock time of the next reconnect attempt, while waiting for it.
+        self.next_retry_at: float | None = None
 
     def start(self) -> None:
         """Connect in the background; never blocks setup."""
@@ -119,7 +121,11 @@ class SensatePush:
             await self._async_close()
             delay = MQTT_BACKOFF[min(attempt, len(MQTT_BACKOFF) - 1)]
             attempt += 1
-            await asyncio.sleep(delay)
+            self.next_retry_at = time.time() + delay
+            try:
+                await asyncio.sleep(delay)
+            finally:
+                self.next_retry_at = None
 
     async def _async_connect(self) -> None:
         settings = await self._api.async_register_push(self._identity)
