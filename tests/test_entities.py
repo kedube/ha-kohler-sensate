@@ -72,10 +72,10 @@ async def test_device_info(hass: HomeAssistant, setup_entry: MockConfigEntry) ->
     assert device.serial_number == "SN-SECRET-1"
 
 
-async def test_firmware_as_object(
+async def test_firmware_as_text(
     hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
 ) -> None:
-    kohler.config["configuration"]["about"]["firmware"] = {"version": "17.1"}
+    kohler.config["configuration"]["about"]["firmware"] = "17.1"
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     assert get_device(hass, config_entry).sw_version == "17.1"
 

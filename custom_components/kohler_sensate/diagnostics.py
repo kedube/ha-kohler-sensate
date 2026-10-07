@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.components.diagnostics import REDACTED, async_redact_data
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 
@@ -32,10 +33,44 @@ TO_REDACT = {
 }
 
 
+def _redact_values(data: Any, pattern: re.Pattern[str]) -> Any:
+    """Redact identifiers wherever they appear, whatever the field is called.
+
+    Kohler echoes the device id in fields like "id", which key-based redaction
+    can't catch without hiding every other "id".
+    """
+    if isinstance(data, str):
+        return pattern.sub(REDACTED, data)
+    if isinstance(data, dict):
+        return {key: _redact_values(value, pattern) for key, value in data.items()}
+    if isinstance(data, list):
+        return [_redact_values(item, pattern) for item in data]
+    return data
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: SensateConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
+    coordinator = entry.runtime_data
+    identifiers = [
+        re.escape(value)
+        for value in (
+            entry.data.get(CONF_DEVICE_ID),
+            entry.data.get(CONF_USERNAME),
+            coordinator.api.tenant_id,
+        )
+        if value
+    ]
+    diagnostics = _diagnostics(entry)
+    if not identifiers:
+        return diagnostics
+    pattern = re.compile("|".join(identifiers), re.IGNORECASE)
+    redacted: dict[str, Any] = _redact_values(diagnostics, pattern)
+    return redacted
+
+
+def _diagnostics(entry: SensateConfigEntry) -> dict[str, Any]:
     coordinator = entry.runtime_data
     return {
         "entry": {

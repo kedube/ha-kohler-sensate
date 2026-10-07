@@ -67,13 +67,17 @@ class FakeKohler:
             "handleState": "OPEN",
             "quantity": None,
         }
+        # Shaped like a real Sensate's reply (firmware 16.0), which repeats
+        # the device id under "id".
         self.config: dict[str, Any] = {
+            "id": DEVICE_ID,
+            "deviceId": DEVICE_ID,
             "configuration": {
                 "about": {
                     "name": "SENSATE",
                     "model": "SEN",
                     "serialNumber": "SN-SECRET-1",
-                    "firmware": "16.0",
+                    "firmware": {"version": "16.0", "latestVersion": "16.0"},
                     "hardware": "CC3235SF",
                 }
             },

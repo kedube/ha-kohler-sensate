@@ -242,9 +242,9 @@ about your faucet makes Home Assistant re-read its state right away. Once the
 feed has delivered for your faucet, idle polling relaxes to every 5 minutes;
 if the feed drops, polling goes back to every 30 seconds while it reconnects.
 
-It's experimental because the feed is confirmed for Kohler's Anthem showers
-but not yet for the Sensate. If nothing ever arrives, nothing breaks: polling
-carries on as before. The option adds a "HomeAssistant" entry to the
+The feed has been confirmed with a Sensate on firmware 16.0. It stays
+experimental because Kohler doesn't document it and could change it; if
+nothing arrives, nothing breaks, and polling carries on as before. The option adds a "HomeAssistant" entry to the
 notification devices on your Kohler account. **Download diagnostics** shows
 whether the feed is connected and how many messages it has received.
 

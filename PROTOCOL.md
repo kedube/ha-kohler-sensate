@@ -94,8 +94,9 @@ error body (which may name the required parameters) and tries common
 date-range parameter shapes.
 
 ## Instant updates (Azure IoT Hub)
-Confirmed for Anthem showers by kohler-anthem and kohler-anthem-plus; not yet
-confirmed for the Sensate.
+Confirmed for Anthem showers by kohler-anthem and kohler-anthem-plus, and for
+the Sensate (firmware 16.0): messages carrying the faucet's `deviceid` arrive
+when it changes.
 
 1. `POST /platform/api/v1/mobile/settings` (ROPC token OK) with
    `{tenantId, mobileDeviceId, username: "HomeAssistant", os: "Android",
@@ -128,7 +129,11 @@ integration waits that long, clamped to 30 s–15 min.
 - Payloads are exact (Gson `@SerializedName` from the APK models).
 - Verified live: the HTTP 200 from `dispense` is enough to run the water and
   stop at the requested amount; no MQTT listener is needed.
-- Still unknown: whether `dispense` ever needs a prior `onoff:ON`, the full
-  set of `status`/`progress` values, and the shape of `leakDetectionHistory`
-  entries. The integration treats each entry as a leak event the user clears
+- Seen live (firmware 16.0): `status` `On`/`Off`, `progress` `NotStarted`,
+  `handleState` `OPEN`, `connectionState` `Connected`. The configuration
+  reply repeats the device id under `id`, and `about.firmware` is an object
+  (`{"version": "16.0", "latestVersion": …}`).
+- Still unknown: whether `dispense` ever needs a prior `onoff:ON`, the
+  `progress` values during and after a dispense, other `handleState` and
+  `connectionState` values, and the shape of `leakDetectionHistory` entries. The integration treats each entry as a leak event the user clears
   in Home Assistant, keyed by its `id` if it has one, else by its content.

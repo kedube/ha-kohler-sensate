@@ -4,6 +4,14 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Unreleased
+
+### Security
+
+- Diagnostics redact the device ID, account email and account ID wherever
+  they appear, not just in known fields. Kohler's configuration reply repeats
+  the device ID under `id`, which diagnostics used to show.
+
 ## 0.2.0
 
 ### Added
