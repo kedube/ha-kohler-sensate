@@ -12,7 +12,7 @@ from homeassistant.components.select import (
     DOMAIN as SELECT_DOMAIN,
     SERVICE_SELECT_OPTION,
 )
-from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE
+from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, EntityCategory
 from homeassistant.core import HomeAssistant, State
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
@@ -255,3 +255,27 @@ async def test_preset_outside_dispense_range(
         await _press(hass)
     assert err.value.translation_key == "preset_out_of_range"
     assert kohler.commands == []
+
+
+async def test_settings_listed_under_configuration(
+    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
+) -> None:
+    registry = er.async_get(hass)
+    settings = (("number", "dispense_amount"), (SELECT_DOMAIN, "preset"))
+    # As 0.7 registered them, before they were configuration entities.
+    for domain, key in settings:
+        registry.async_get_or_create(
+            domain, DOMAIN, f"{DEVICE_ID}_{key}", config_entry=config_entry
+        )
+    await _setup(hass, config_entry, kohler, PRESETS)
+
+    def category(domain: str, key: str) -> EntityCategory | None:
+        entity_id = registry.async_get_entity_id(domain, DOMAIN, f"{DEVICE_ID}_{key}")
+        assert entity_id is not None
+        return registry.async_get(entity_id).entity_category
+
+    for domain, key in settings:
+        assert category(domain, key) is EntityCategory.CONFIG
+    # The buttons they set stay under Controls.
+    for key in ("dispense_set_amount", "dispense_preset"):
+        assert category(BUTTON_DOMAIN, key) is None

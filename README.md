@@ -165,11 +165,27 @@ states in your language; automations and templates use the values above.
 | ------- | --------- | ---- | ----------- |
 | Water | `switch.kitchen_water` | Switch | Turns the water on or off. Water turned on here turns off by itself after the [water safety limit](#options). |
 | Dispense *amount* | `button.kitchen_dispense_250_ml`, … | Button (7) | Dispenses a fixed amount. The amounts follow the [units](#units) option. |
-| Dispense amount | `number.kitchen_dispense_amount` | Number | How much *Dispense set amount* pours: 10–4000 mL or 0.5–135 fl oz. Kept across restarts. |
+| Dispense amount | `number.kitchen_dispense_amount` | Number (configuration) | How much *Dispense set amount* pours: 10–4000 mL or 0.5–135 fl oz. Kept across restarts. |
 | Dispense set amount | `button.kitchen_dispense_set_amount` | Button | Dispenses the *Dispense amount*. |
-| Preset | `select.kitchen_preset` | Select | Which preset saved in the Konnect app *Dispense preset* pours. Attributes: `amount` and `unit`. See [Konnect presets](#konnect-presets). |
+| Preset | `select.kitchen_preset` | Select (configuration) | Which preset saved in the Konnect app *Dispense preset* pours. Attributes: `amount` and `unit`. See [Konnect presets](#konnect-presets). |
 | Dispense preset | `button.kitchen_dispense_preset` | Button | Dispenses the chosen *Preset*. |
 | Clear leak alert | `button.kitchen_clear_leak_alert` | Button | Marks the current leak events as dealt with, which turns *Leak* off. |
+
+*Dispense amount* and *Preset* are settings for the two buttons, so the
+device page lists them under **Configuration**, and the buttons under
+**Controls**. Home Assistant's auto-generated dashboard leaves configuration
+entities out. To keep each setting next to its button, add a card like this
+to a dashboard:
+
+```yaml
+type: entities
+title: Kitchen faucet
+entities:
+  - number.kitchen_dispense_amount
+  - button.kitchen_dispense_set_amount
+  - select.kitchen_preset
+  - button.kitchen_dispense_preset
+```
 
 ### Firmware
 
@@ -434,6 +450,14 @@ Instant updates registered a "HomeAssistant" entry among your Kohler
 account's notification devices; deleting the faucet doesn't remove it.
 
 ## Upgrading
+
+### From 0.7
+
+- *Dispense amount* and *Preset* moved to the device page's
+  **Configuration** section, so Home Assistant's auto-generated dashboard no
+  longer shows them. Dashboards you built yourself are unaffected; see
+  [Controls](#controls) for a card that keeps each setting next to its
+  button.
 
 ### From 0.4 or 0.5
 

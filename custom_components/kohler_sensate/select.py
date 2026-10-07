@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -41,6 +42,8 @@ class SensatePresetSelect(SensateEntity, SelectEntity, RestoreEntity):
     """
 
     _attr_translation_key = "preset"
+    # A setting for the button, listed under Configuration on the device page.
+    _attr_entity_category = EntityCategory.CONFIG
     # A local choice from Kohler's cloud list; the faucet needn't be online.
     _requires_online = False
 

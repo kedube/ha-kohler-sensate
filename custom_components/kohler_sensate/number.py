@@ -7,7 +7,7 @@ from homeassistant.components.number import (
     NumberMode,
     RestoreNumber,
 )
-from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT
+from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -39,6 +39,8 @@ class SensateDispenseAmount(SensateEntity, RestoreNumber):
     _requires_online = False
 
     _attr_translation_key = "dispense_amount"
+    # A setting for the button, listed under Configuration on the device page.
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_device_class = NumberDeviceClass.VOLUME
     _attr_mode = NumberMode.BOX
 

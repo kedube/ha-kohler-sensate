@@ -4,6 +4,16 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Unreleased
+
+### Changed
+
+- *Dispense amount* and *Preset* are configuration entities, listed under
+  **Configuration** on the device page instead of among the controls, as
+  settings for *Dispense set amount* and *Dispense preset*. Home Assistant's
+  auto-generated dashboard no longer shows them; the README has a dashboard
+  card that keeps each setting next to its button.
+
 ## 0.7.0
 
 ### Added
