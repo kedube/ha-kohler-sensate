@@ -9,3 +9,4 @@ htmlcov/
 recon/.env
 recon/captures/
 *.env
+.DS_Store
