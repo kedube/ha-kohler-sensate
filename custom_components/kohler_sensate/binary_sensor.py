@@ -2,59 +2,102 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SensateConfigEntry
+from .coordinator import SensateCoordinator
 from .entity import SensateEntity
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SensateConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
     async_add_entities(
-        [SensateLeakSensor(coordinator), SensateDispensingSensor(coordinator)]
+        [
+            SensateLeakSensor(coordinator),
+            SensateDispensingSensor(coordinator),
+            SensateConnectedSensor(coordinator),
+        ]
     )
 
 
 class SensateLeakSensor(SensateEntity, BinarySensorEntity):
-    """On when the faucet has reported a leak."""
+    """On while Kohler reports a leak event that hasn't been cleared.
 
-    _attr_name = "Leak"
+    Kohler keeps leak events in the faucet's history, so "any event" would
+    stay on for good. Press "Clear leak alert" to acknowledge the current
+    events; a new one turns the sensor back on.
+    """
+
+    _requires_online = False
+
+    _attr_translation_key = "leak"
     _attr_device_class = BinarySensorDeviceClass.MOISTURE
 
-    def __init__(self, coordinator) -> None:
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{self._device_id}_leak"
+    def __init__(self, coordinator: SensateCoordinator) -> None:
+        super().__init__(coordinator, "leak")
 
     @property
-    def is_on(self) -> bool:
-        return len(self.coordinator.leak_history) > 0
+    def is_on(self) -> bool | None:
+        # Unknown, not "dry", until the configuration has been read once.
+        if not self.coordinator.config_loaded:
+            return None
+        return bool(self.coordinator.active_leaks)
 
     @property
-    def extra_state_attributes(self) -> dict:
+    def extra_state_attributes(self) -> dict[str, Any]:
         history = self.coordinator.leak_history
-        return {"events": len(history), "latest": history[-1] if history else None}
+        return {
+            "events": len(history),
+            "uncleared_events": len(self.coordinator.active_leaks),
+            "latest": history[-1] if history else None,
+        }
 
 
 class SensateDispensingSensor(SensateEntity, BinarySensorEntity):
     """On while the faucet is actively dispensing."""
 
-    _attr_name = "Dispensing"
+    _attr_translation_key = "dispensing"
     _attr_device_class = BinarySensorDeviceClass.RUNNING
-    _attr_icon = "mdi:water"
 
-    def __init__(self, coordinator) -> None:
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{self._device_id}_dispensing"
+    def __init__(self, coordinator: SensateCoordinator) -> None:
+        super().__init__(coordinator, "dispensing")
 
     @property
     def is_on(self) -> bool:
         return self.coordinator.is_dispensing()
+
+
+class SensateConnectedSensor(SensateEntity, BinarySensorEntity):
+    """Whether Kohler's cloud can currently reach the faucet."""
+
+    _requires_online = False
+    _attr_translation_key = "connected"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: SensateCoordinator) -> None:
+        super().__init__(coordinator, "connected")
+
+    @property
+    def is_on(self) -> bool | None:
+        if self.coordinator.connection_state is None:
+            return None  # Kohler didn't say
+        return self.coordinator.faucet_online
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"last_connected": self.coordinator.last_connected}

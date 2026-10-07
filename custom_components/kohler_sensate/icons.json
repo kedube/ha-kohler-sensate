@@ -1,0 +1,79 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "dispensing": {
+        "default": "mdi:water-off",
+        "state": {
+          "on": "mdi:water"
+        }
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_quarter_cup": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_half_cup": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_one_cup": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_two_cups": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_one_quart": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_half_gallon": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_one_gallon": {
+        "default": "mdi:cup-water"
+      },
+      "dispense_set_amount": {
+        "default": "mdi:water-plus"
+      },
+      "clear_leak": {
+        "default": "mdi:water-check"
+      },
+      "preset": {
+        "default": "mdi:playlist-play"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "default": "mdi:beaker-outline"
+      }
+    },
+    "sensor": {
+      "status": {
+        "default": "mdi:faucet"
+      },
+      "progress": {
+        "default": "mdi:progress-clock"
+      },
+      "handle_state": {
+        "default": "mdi:gesture-tap-button"
+      },
+      "last_dispense": {
+        "default": "mdi:cup-water"
+      }
+    },
+    "switch": {
+      "water": {
+        "default": "mdi:faucet-variant",
+        "state": {
+          "on": "mdi:faucet"
+        }
+      }
+    }
+  },
+  "services": {
+    "dispense": {
+      "service": "mdi:cup-water"
+    }
+  }
+}

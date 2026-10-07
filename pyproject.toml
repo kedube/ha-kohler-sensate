@@ -1,0 +1,21 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+# Fail fast instead of hanging CI if a background task never settles.
+timeout = 60
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+# Standalone reverse-engineering scripts, not shipped with the integration.
+extend-exclude = ["recon"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "ASYNC", "LOG", "G"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["custom_components.kohler_sensate"]
+combine-as-imports = true

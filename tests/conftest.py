@@ -1,0 +1,242 @@
+"""Fixtures for Kohler Sensate tests.
+
+``FakeKohler`` stands in for the B2C token endpoint and the Konnect API at the
+HTTP level, so the real client in ``api.py`` is exercised end to end.
+"""
+
+from __future__ import annotations
+
+import base64
+from collections.abc import Generator
+import json
+import re
+from typing import Any
+
+from aiohttp import ClientError
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+    AiohttpClientMockResponse,
+)
+
+from custom_components.kohler_sensate.const import (
+    API_BASE,
+    CONF_DEVICE_ID,
+    CONF_UNIT_SYSTEM,
+    DOMAIN,
+    TOKEN_URL,
+    UNIT_SYSTEM_METRIC,
+)
+
+DEVICE_ID = "sen-test123456"
+TENANT_ID = "0f0f0f0f-1111-2222-3333-444444444444"
+USERNAME = "owner@example.com"
+PASSWORD = "correct-horse-battery-staple"
+
+
+def make_jwt(claims: dict[str, Any]) -> str:
+    def b64(data: dict[str, Any]) -> str:
+        return base64.urlsafe_b64encode(json.dumps(data).encode()).rstrip(b"=").decode()
+
+    return f"{b64({'alg': 'none'})}.{b64(claims)}.signature"
+
+
+class FakeKohler:
+    """Programmable fake of Kohler's token endpoint and cloud API."""
+
+    def __init__(self, mocker: AiohttpClientMocker) -> None:
+        self.mocker = mocker
+        self.issued = 0
+        self.token_requests: list[dict[str, str]] = []
+        # Queued token responses: (status, json) tuples or exceptions.
+        self.token_queue: list[Any] = []
+        # Queued API responses, keyed by path suffix: (status, json) or exceptions.
+        self.api_queue: dict[str, list[Any]] = {}
+        self.commands: list[tuple[str, dict[str, Any]]] = []
+        self.devices = [
+            {"deviceId": DEVICE_ID, "sku": "SEN", "logicalName": "Kitchen"},
+            {"deviceId": "gcs-shower", "sku": "GCS", "logicalName": "Shower"},
+        ]
+        self.state: dict[str, Any] = {
+            "status": "Off",
+            "progress": "NotStarted",
+            "handleState": "OPEN",
+            "quantity": None,
+        }
+        self.config: dict[str, Any] = {
+            "configuration": {
+                "about": {
+                    "name": "SENSATE",
+                    "model": "SEN",
+                    "serialNumber": "SN-SECRET-1",
+                    "firmware": "16.0",
+                    "hardware": "CC3235SF",
+                }
+            },
+            "leakDetectionHistory": [],
+        }
+        # None leaves connectionState out of the reply.
+        self.connection: str | None = "Connected"
+        # None answers the presets endpoint with 404 (no presets saved).
+        self.presets: Any = None
+        self.push_registrations: list[dict[str, Any]] = []
+        mocker.post(TOKEN_URL, side_effect=self._token)
+        mocker.request("get", re.compile(re.escape(API_BASE)), side_effect=self._api)
+        mocker.request("post", re.compile(re.escape(API_BASE)), side_effect=self._api)
+
+    @property
+    def access_tokens(self) -> list[str]:
+        return [make_jwt({"oid": TENANT_ID, "n": n}) for n in range(1, self.issued + 1)]
+
+    def _respond(self, method: str, url: Any, item: Any) -> AiohttpClientMockResponse:
+        if isinstance(item, BaseException):
+            return AiohttpClientMockResponse(method, url, exc=item)
+        status, body, *rest = item
+        headers = rest[0] if rest else None
+        if isinstance(body, str):
+            return AiohttpClientMockResponse(
+                method, url, status=status, text=body, headers=headers
+            )
+        return AiohttpClientMockResponse(
+            method, url, status=status, json=body, headers=headers
+        )
+
+    async def _token(
+        self, method: str, url: Any, data: Any
+    ) -> AiohttpClientMockResponse:
+        self.token_requests.append(dict(data))
+        if self.token_queue:
+            return self._respond(method, url, self.token_queue.pop(0))
+        self.issued += 1
+        return self._respond(
+            method,
+            url,
+            (
+                200,
+                {
+                    "access_token": make_jwt({"oid": TENANT_ID, "n": self.issued}),
+                    "refresh_token": f"refresh-{self.issued}",
+                    "expires_in": "3600",
+                },
+            ),
+        )
+
+    async def _api(self, method: str, url: Any, data: Any) -> AiohttpClientMockResponse:
+        path = url.path
+        for suffix, queue in self.api_queue.items():
+            if path.endswith(suffix) and queue:
+                return self._respond(method, url, queue.pop(0))
+        if path.endswith("/mobile/settings"):
+            self.push_registrations.append(data)
+            n = len(self.push_registrations)
+            return self._respond(
+                method,
+                url,
+                (
+                    200,
+                    {
+                        "ioTHubSettings": {
+                            "ioTHub": "hub.example.net",
+                            "deviceId": f"mobile-{data['mobileDeviceId']}",
+                            "username": "hub.example.net/user",
+                            "password": f"SharedAccessSignature sig-{n}",
+                        }
+                    },
+                ),
+            )
+        if method.lower() == "post":
+            self.commands.append((path.rsplit("/", 1)[-1], data))
+            return self._respond(
+                method, url, (200, {"correlationId": "c", "timestamp": 1})
+            )
+        if "/customer-device/" in path:
+            return self._respond(
+                method,
+                url,
+                (
+                    200,
+                    {
+                        "customerHome": [
+                            {"address": "1 Main St", "devices": self.devices}
+                        ]
+                    },
+                ),
+            )
+        if "/faucet-state/" in path:
+            body: dict[str, Any] = {"state": dict(self.state)}
+            if self.connection is not None:
+                body["connectionState"] = self.connection
+                body["lastConnected"] = "2026-10-06T12:00:00Z"
+            return self._respond(method, url, (200, body))
+        if "/faucet-experience/" in path and self.presets is not None:
+            return self._respond(method, url, (200, self.presets))
+        if "/faucet-configuration/" in path:
+            return self._respond(method, url, (200, self.config))
+        return self._respond(method, url, (404, {"message": "not found"}))
+
+    def fail_api(self, suffix: str, *items: Any) -> None:
+        self.api_queue.setdefault(suffix, []).extend(items)
+
+    def network_error(self) -> ClientError:
+        return ClientError("connection reset")
+
+    @property
+    def state_polls(self) -> int:
+        return sum(
+            1 for _, url, _, _ in self.mocker.mock_calls if "/faucet-state/" in str(url)
+        )
+
+    def auth_headers(self) -> list[str]:
+        return [
+            headers["Authorization"]
+            for _, url, _, headers in self.mocker.mock_calls
+            if headers and "Authorization" in headers
+        ]
+
+
+def get_device(hass: HomeAssistant, entry: MockConfigEntry) -> dr.DeviceEntry:
+    """Return the faucet device of ``entry`` (works across HA versions)."""
+    (device,) = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    return device
+
+
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(
+    enable_custom_integrations: None,
+) -> Generator[None]:
+    yield
+
+
+@pytest.fixture
+def kohler(aioclient_mock: AiohttpClientMocker) -> FakeKohler:
+    return FakeKohler(aioclient_mock)
+
+
+@pytest.fixture
+def config_entry(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Kitchen",
+        unique_id=DEVICE_ID,
+        data={
+            CONF_USERNAME: USERNAME,
+            CONF_PASSWORD: PASSWORD,
+            CONF_DEVICE_ID: DEVICE_ID,
+        },
+        options={CONF_UNIT_SYSTEM: UNIT_SYSTEM_METRIC},
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
+@pytest.fixture
+async def setup_entry(
+    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
+) -> MockConfigEntry:
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    return config_entry

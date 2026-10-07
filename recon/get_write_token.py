@@ -76,6 +76,7 @@ def _save_token(refresh_token: str) -> None:
         ]
     lines.append(f"{ENV_KEY}={refresh_token}")
     ENV_PATH.write_text("\n".join(lines) + "\n")
+    ENV_PATH.chmod(0o600)  # holds a long-lived account token
 
 
 async def main() -> int:

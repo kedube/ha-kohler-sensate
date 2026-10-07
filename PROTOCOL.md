@@ -47,7 +47,7 @@ after a dispense the app waits on MQTT for progress/completion.
 similar — TBD). `faucet-experience` returned 404 (likely no presets saved yet,
 or the path needs a suffix — TBD).
 
-## Writes (POST `/platform/api/v1/commands/faucet/{cmd}`, B2C_1A_signin token)
+## Writes (POST `/platform/api/v1/commands/faucet/{cmd}`, ROPC token OK)
 
 ### `dispense` — dispense a measured amount  ← headline feature
 ```json
@@ -73,9 +73,62 @@ experienceTitle, sku, status, tenantId }`.
 - deviceId `sen-xxxxxxxxxx`, sku `SEN`, account `waterUnits: "Metric"`.
 - tenantId `<your-account-oid>` (the `oid` claim from your own token).
 
+## Connection state
+`faucet-state` also returns `connectionState` (`"Connected"` seen live) and
+`lastConnected`. The integration treats any other `connectionState` as
+offline, and a missing one as online.
+
+## Presets (`faucet-experience`)
+`GET /devices/api/v1/device-management/faucet-experience/{deviceId}` answered
+404 on an account with no presets. The response shape with presets is
+unknown. The integration accepts a list (or a dict holding one under
+`experiences`, `faucetExperiences`, `presets` or `data`) of items with
+`experienceId`/`id`, `experienceTitle`/`title`/`name` and
+`experienceQuantity`/`quantity` in liters, the field names of the app's
+`FaucetExperienceRequest` model. It dispenses a preset with the verified
+`dispense` command rather than the untested `presetexperience` command.
+
+## Water usage (`faucet-usage`)
+Answers HTTP 400 without parameters. `recon/faucet_probe.py` prints the full
+error body (which may name the required parameters) and tries common
+date-range parameter shapes.
+
+## Instant updates (Azure IoT Hub)
+Confirmed for Anthem showers by kohler-anthem and kohler-anthem-plus; not yet
+confirmed for the Sensate.
+
+1. `POST /platform/api/v1/mobile/settings` (ROPC token OK) with
+   `{tenantId, mobileDeviceId, username: "HomeAssistant", os: "Android",
+   devicePlatform: "FirebaseCloudMessagingV1", deviceHandle: "ha_<id>",
+   tags: ["FirmwareUpdate"]}` returns `ioTHubSettings` with `ioTHub` (host),
+   `deviceId`, `username` and `password` (a SAS token). Reuse one
+   `mobileDeviceId`; each call returns fresh credentials.
+2. MQTT 3.1.1 over TLS to `ioTHub:8883`, client id `deviceId`.
+3. Subscribe to `$iothub/methods/POST/#`. Events arrive there as direct
+   methods for every device on the account (top-level `sku` and `deviceid`),
+   and must be acknowledged on `$iothub/methods/res/200/?$rid=<rid>`.
+4. Nothing is replayed on connect, so re-read the state after connecting.
+   On disconnect, register again for fresh credentials.
+
+## Throttling
+429 and 503 replies may carry `Retry-After` (seconds or an HTTP date). The
+integration waits that long, clamped to 30 s–15 min.
+
+## Token lifecycle (as implemented in the integration)
+- ROPC sign-in: `POST https://konnectkohler.b2clogin.com/tfp/konnectkohler.onmicrosoft.com/B2C_1_ROPC_Auth/oauth2/v2.0/token`
+  with `grant_type=password`, `client_id`, `username`, `password`,
+  `scope=openid offline_access https://konnectkohler.onmicrosoft.com/{api_resource}/apiaccess`.
+- Renewal: same endpoint, `grant_type=refresh_token`. Done 5 min before
+  `expires_in`; if B2C rejects the refresh token the integration signs in
+  again with the password.
+- API calls send `Authorization: Bearer …`, `Ocp-Apim-Subscription-Key`, and a
+  Konnect-style `User-Agent`. An HTTP 401 renews the token and retries once.
+
 ## Confidence / still to verify live
 - Payloads are exact (Gson `@SerializedName` from the APK models).
-- Unverified against the running device yet: (a) whether `dispense` alone starts
-  water or needs a prior `onoff:ON`; (b) the `faucet-state`/`faucet-usage`
-  response shapes (need one authenticated GET); (c) whether writes require the
-  MQTT listener or the HTTP 201 is enough. All resolved by one B2C write test.
+- Verified live: the HTTP 200 from `dispense` is enough to run the water and
+  stop at the requested amount; no MQTT listener is needed.
+- Still unknown: whether `dispense` ever needs a prior `onoff:ON`, the full
+  set of `status`/`progress` values, and the shape of `leakDetectionHistory`
+  entries. The integration treats each entry as a leak event the user clears
+  in Home Assistant, keyed by its `id` if it has one, else by its content.

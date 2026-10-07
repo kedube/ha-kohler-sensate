@@ -3,36 +3,236 @@
     "step": {
       "user": {
         "title": "Kohler Sensate",
-        "description": "Sign in with your Kohler Konnect account (the same email and password you use in the Konnect app).",
+        "description": "Sign in with your Kohler Konnect account.",
         "data": {
           "username": "Email",
           "password": "Password"
+        },
+        "data_description": {
+          "username": "The email address you use to sign in to the Kohler Konnect app.",
+          "password": "Your Kohler Konnect password. It is stored in Home Assistant so the integration can sign in again on its own when Kohler's session expires."
+        }
+      },
+      "pick_device": {
+        "title": "Choose a faucet",
+        "description": "This account has more than one Sensate faucet. Choose the one to add; you can add the others afterwards.",
+        "data": {
+          "device_id": "Faucet"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Kohler Konnect again",
+        "description": "Kohler no longer accepts the saved password for {name}. Enter your current Konnect password.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "The email address you use to sign in to the Kohler Konnect app.",
+          "password": "Your current Kohler Konnect password."
+        }
+      },
+      "reconfigure": {
+        "title": "Update Kohler Konnect account",
+        "description": "Change the email or password used for {name}. The account must still own this faucet.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "The email address you use to sign in to the Kohler Konnect app.",
+          "password": "Your Kohler Konnect password. It is stored in Home Assistant so the integration can sign in again on its own when Kohler's session expires."
         }
       }
     },
     "error": {
       "invalid_auth": "Invalid email or password.",
       "cannot_connect": "Could not reach the Kohler cloud. Try again.",
-      "no_device": "No Sensate faucet was found on this account."
+      "no_device": "No Sensate faucet was found on this account.",
+      "unknown": "Unexpected error. Check the logs for details."
     },
     "abort": {
-      "already_configured": "This faucet is already set up."
+      "already_configured": "This faucet is already set up.",
+      "reauth_successful": "Signed in again successfully.",
+      "wrong_account": "This account does not have the faucet that was set up. Sign in with the account that owns it.",
+      "reconfigure_successful": "Account updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kohler Sensate options",
+        "data": {
+          "unit_system": "Units",
+          "max_run_minutes": "Water safety limit",
+          "push_updates": "Instant updates (experimental)"
+        },
+        "data_description": {
+          "unit_system": "Units for the quick-dispense buttons, the dispense amount, the last dispense sensor, and the default unit of the dispense action.",
+          "max_run_minutes": "Turn the water off this many minutes after it's turned on from Home Assistant, unless it's turned off in the meantime. 0 turns the limit off.",
+          "push_updates": "Listen to Kohler's real-time feed, like the Konnect app does, and update as soon as the faucet changes. Adds a Home Assistant entry to your Kohler account's notification devices. Polling continues as a backup."
+        }
+      }
+    }
+  },
+  "selector": {
+    "unit_system": {
+      "options": {
+        "metric": "Metric (mL, L)",
+        "imperial": "Imperial (fl oz, cups, quarts, gallons)"
+      }
+    },
+    "volume_unit": {
+      "options": {
+        "ml": "Milliliters (mL)",
+        "l": "Liters (L)",
+        "fl_oz": "Fluid ounces (fl oz)",
+        "cup": "Cups",
+        "qt": "Quarts",
+        "gal": "Gallons"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "leak": {
+        "name": "Leak"
+      },
+      "dispensing": {
+        "name": "Dispensing"
+      },
+      "connected": {
+        "name": "Connected"
+      }
+    },
+    "button": {
+      "quick_dispense": {
+        "name": "Dispense {amount}"
+      },
+      "dispense_quarter_cup": {
+        "name": "Dispense ¼ cup"
+      },
+      "dispense_half_cup": {
+        "name": "Dispense ½ cup"
+      },
+      "dispense_one_cup": {
+        "name": "Dispense 1 cup"
+      },
+      "dispense_two_cups": {
+        "name": "Dispense 2 cups"
+      },
+      "dispense_one_quart": {
+        "name": "Dispense 1 quart"
+      },
+      "dispense_half_gallon": {
+        "name": "Dispense ½ gallon"
+      },
+      "dispense_one_gallon": {
+        "name": "Dispense 1 gallon"
+      },
+      "dispense_set_amount": {
+        "name": "Dispense set amount"
+      },
+      "clear_leak": {
+        "name": "Clear leak alert"
+      },
+      "preset": {
+        "name": "Preset: {title}"
+      }
+    },
+    "number": {
+      "dispense_amount": {
+        "name": "Dispense amount"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "progress": {
+        "name": "Dispense progress"
+      },
+      "handle_state": {
+        "name": "Handle"
+      },
+      "last_dispense": {
+        "name": "Last dispensed"
+      }
+    },
+    "switch": {
+      "water": {
+        "name": "Water"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Kohler rejected the saved credentials. Sign in again from the integration page."
+    },
+    "update_failed": {
+      "message": "Error talking to the Kohler cloud: {error}"
+    },
+    "command_failed": {
+      "message": "The Kohler cloud did not accept the command: {error}"
+    },
+    "not_loaded": {
+      "message": "No Kohler Sensate faucet is set up and running."
+    },
+    "device_not_found": {
+      "message": "The selected device is not a loaded Kohler Sensate faucet."
+    },
+    "device_required": {
+      "message": "More than one Sensate faucet is set up. Choose which faucet should dispense."
+    },
+    "amount_out_of_range": {
+      "message": "Choose an amount between {min} and {max} {unit}."
+    },
+    "faucet_offline": {
+      "message": "{name} is offline: Kohler's cloud can't reach the faucet. Check its power and Wi-Fi."
+    },
+    "rate_limited": {
+      "message": "Kohler is limiting requests. Try again in {seconds} seconds."
+    },
+    "preset_out_of_range": {
+      "message": "The preset \"{title}\" is outside the 10 mL to 4 L dispense range."
     }
   },
   "services": {
     "dispense": {
       "name": "Dispense water",
-      "description": "Dispense a measured amount of water from the Sensate faucet.",
+      "description": "Dispenses a measured amount of water from a Sensate faucet.",
       "fields": {
+        "device_id": {
+          "name": "Faucet",
+          "description": "The faucet to dispense from. Optional when only one faucet is set up."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "How much water to dispense, in the chosen unit (between 10 mL and 4 L)."
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "Unit of the amount. Defaults to mL for metric and fl oz for imperial, per the integration options."
+        },
         "amount_ml": {
           "name": "Amount (mL)",
-          "description": "How much to dispense, in milliliters."
+          "description": "Legacy: how much to dispense, in milliliters. Use instead of amount."
         },
         "amount_l": {
           "name": "Amount (L)",
-          "description": "How much to dispense, in liters (use this OR the mL field)."
+          "description": "Legacy: how much to dispense, in liters. Use instead of amount."
         }
       }
+    }
+  },
+  "issues": {
+    "faucet_not_found": {
+      "title": "{name} is no longer on your Kohler account",
+      "description": "Kohler no longer lists this faucet on your account, so Home Assistant can't read or control it. If you removed or replaced it in the Konnect app, delete this faucet from Home Assistant and add it again.\n\nLast error: {error}"
+    },
+    "api_changed": {
+      "title": "Kohler keeps rejecting requests for {name}",
+      "description": "Kohler's cloud has rejected several requests in a row, which usually means Kohler changed its API. Check for an update to this integration. If there's none, open an issue and attach the integration's diagnostics.\n\nLast error: {error}"
     }
   }
 }

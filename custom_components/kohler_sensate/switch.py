@@ -6,18 +6,20 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SensateConfigEntry
-from .api import SensateApiError
+from .coordinator import SensateCoordinator
 from .entity import SensateEntity
+
+# Send one command at a time.
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SensateConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     async_add_entities([SensateWaterSwitch(entry.runtime_data)])
 
@@ -25,29 +27,17 @@ async def async_setup_entry(
 class SensateWaterSwitch(SensateEntity, SwitchEntity):
     """On/off control for the faucet water."""
 
-    _attr_name = "Water"
-    _attr_icon = "mdi:water-pump"
+    _attr_translation_key = "water"
 
-    def __init__(self, coordinator) -> None:
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{self._device_id}_water"
+    def __init__(self, coordinator: SensateCoordinator) -> None:
+        super().__init__(coordinator, "water")
 
     @property
     def is_on(self) -> bool | None:
-        status = (self.coordinator.data or {}).get("status")
-        if status is None:
-            return None
-        return status.lower() not in ("off", "notstarted")
+        return self.coordinator.water_running
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self._set(True)
+        await self.coordinator.async_set_water(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self._set(False)
-
-    async def _set(self, on: bool) -> None:
-        try:
-            await self.coordinator.api.set_power(on)
-        except SensateApiError as err:
-            raise HomeAssistantError(f"Kohler command failed: {err}") from err
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_set_water(False)

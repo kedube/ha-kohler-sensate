@@ -1,12 +1,12 @@
 {
   "domain": "kohler_sensate",
   "name": "Kohler Sensate Faucet",
-  "codeowners": ["@jose-gonzalez-valdez"],
+  "codeowners": ["@kedube"],
   "config_flow": true,
-  "documentation": "https://github.com/jose-gonzalez-valdez/kohler-sensate-ha",
+  "documentation": "https://github.com/kedube/ha-kohler-sensate",
   "integration_type": "device",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/jose-gonzalez-valdez/kohler-sensate-ha/issues",
-  "requirements": ["kohler-anthem>=0.2.0"],
-  "version": "0.1.0"
+  "issue_tracker": "https://github.com/kedube/ha-kohler-sensate/issues",
+  "requirements": ["paho-mqtt>=2.0.0"],
+  "version": "0.2.0"
 }

@@ -141,7 +141,7 @@ async def main() -> int:
         print("ERROR: signed in but could not read tenant id from token.")
         await client.close()
         return 3
-    print(f"OK — tenant/customer id: {tenant_id}\n")
+    print("OK — signed in.\n")
 
     # 1) Raw account-devices dump.
     print("Fetching all devices on the account…")
@@ -183,7 +183,9 @@ async def main() -> int:
             break
 
     await client.close()
-    print("\nDone. Share the files in recon/captures/ (they contain no password).")
+    print("\nDone. Files in recon/captures/ contain no password, but they DO contain "
+          "your account id, home address/coordinates, Wi-Fi name and device "
+          "serials. Redact them before sharing.")
     return 0
 
 

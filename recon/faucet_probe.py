@@ -15,12 +15,15 @@ the Konnect APK revealed the faucet has its own endpoint family:
 
 This script only READS. It confirms the SEN->faucet mapping and captures the
 real state / water-usage / preset shapes we need to model the integration.
+It also tries a few GUESSED date-range parameters for faucet-usage, which
+answers HTTP 400 without parameters, and prints Kohler's full error replies.
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
+from datetime import datetime, timedelta, timezone
 import json
 import os
 import sys
@@ -75,6 +78,49 @@ def _find_faucet_devices(raw: dict) -> list[str]:
     return ids
 
 
+def _error_body(exc: Exception) -> str:
+    raw = getattr(exc, "raw_response", None)
+    return json.dumps(raw) if raw is not None else str(exc)[:600]
+
+
+def _usage_param_guesses() -> list[dict[str, str]]:
+    """Common date-range parameter shapes. These are GUESSES, not known values."""
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    day, iso, epoch = "%Y-%m-%d", "%Y-%m-%dT%H:%M:%SZ", lambda d: str(int(d.timestamp()))
+    return [
+        {"startDate": week_ago.strftime(day), "endDate": now.strftime(day)},
+        {"fromDate": week_ago.strftime(day), "toDate": now.strftime(day)},
+        {"startDate": week_ago.strftime(iso), "endDate": now.strftime(iso)},
+        {"from": week_ago.strftime(iso), "to": now.strftime(iso)},
+        {"startTime": epoch(week_ago), "endTime": epoch(now)},
+        {"period": "week"},
+        {"type": "weekly"},
+        {"days": "7"},
+    ]
+
+
+async def _probe_usage(client: KohlerAnthemClient, did: str) -> None:
+    """Find the parameters faucet-usage wants (it answers 400 without any).
+
+    Read-only GETs. Look first at the bare request's error body: it may name
+    the required parameters outright, making the guesses unnecessary.
+    """
+    ep = FAUCET_READS["faucet_usage"].format(did=did)
+    print(f"\n--- faucet-usage parameter probe for {did[:12]} ---")
+    for params in _usage_param_guesses():
+        try:
+            data = await client._request("GET", ep, params=params)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [miss] {params}\n         {_error_body(exc)[:300]}")
+            continue
+        fname = OUT_DIR / f"faucet_usage_{did[:12]}.json"
+        fname.write_text(json.dumps({"params": params, "response": data}, indent=2))
+        print(f"  [HIT ] {params} -> {fname.name}")
+        return
+    print("  No guess worked. The error bodies above are the best lead.")
+
+
 async def main() -> int:
     _load_dotenv()
     email = os.environ.get("KONNECT_EMAIL") or input("Kohler Konnect email: ").strip()
@@ -109,7 +155,9 @@ async def main() -> int:
             try:
                 data = await client._request("GET", ep)
             except Exception as exc:  # noqa: BLE001
-                print(f"  [miss] {label:22} {type(exc).__name__}: {str(exc)[:90]}")
+                print(f"  [miss] {label:22} {type(exc).__name__}")
+                # A 400 often says which parameters are missing; show all of it.
+                print(f"         {_error_body(exc)}")
                 continue
             fname = OUT_DIR / f"{label}_{did[:12]}.json"
             fname.write_text(json.dumps(data, indent=2))
@@ -117,8 +165,13 @@ async def main() -> int:
             print(f"  [HIT ] {label:22} -> {fname.name}")
             print(f"         top-level keys: {keys}")
 
+    for did in faucets:
+        await _probe_usage(client, did)
+
     await client.close()
-    print("\nDone. New files are in recon/captures/ (no password inside).")
+    print("\nDone. Files in recon/captures/ contain no password, but they DO contain "
+          "your account id, home address/coordinates, Wi-Fi name and device "
+          "serials. Redact them before sharing.")
     return 0
 
 
