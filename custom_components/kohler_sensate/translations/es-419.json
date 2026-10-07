@@ -14,10 +14,10 @@
         }
       },
       "pick_device": {
-        "title": "Elige un grifo",
-        "description": "Esta cuenta tiene más de un grifo Sensate. Elige el que quieres añadir; puedes añadir los demás después.",
+        "title": "Elige una llave",
+        "description": "Esta cuenta tiene más de una llave Sensate. Elige la que quieres agregar; puedes agregar las demás después.",
         "data": {
-          "device_id": "Grifo"
+          "device_id": "Llave"
         }
       },
       "reauth_confirm": {
@@ -34,7 +34,7 @@
       },
       "reconfigure": {
         "title": "Actualizar la cuenta de Kohler Konnect",
-        "description": "Cambia el correo o la contraseña de {name}. La cuenta debe seguir teniendo este grifo.",
+        "description": "Cambia el correo o la contraseña de {name}. La cuenta debe seguir teniendo esta llave.",
         "data": {
           "username": "Correo",
           "password": "Contraseña"
@@ -48,13 +48,13 @@
     "error": {
       "invalid_auth": "Correo o contraseña incorrectos.",
       "cannot_connect": "No se pudo conectar con la nube de Kohler. Inténtalo de nuevo.",
-      "no_device": "No se ha encontrado ningún grifo Sensate en esta cuenta.",
+      "no_device": "No se encontró ninguna llave Sensate en esta cuenta.",
       "unknown": "Error inesperado. Revisa los registros para más detalles."
     },
     "abort": {
-      "already_configured": "Este grifo ya está configurado.",
+      "already_configured": "Esta llave ya está configurada.",
       "reauth_successful": "Sesión iniciada de nuevo correctamente.",
-      "wrong_account": "Esta cuenta no tiene el grifo que se configuró. Inicia sesión con la cuenta a la que pertenece.",
+      "wrong_account": "Esta cuenta no tiene la llave que se configuró. Inicia sesión con la cuenta a la que pertenece.",
       "reconfigure_successful": "Cuenta actualizada."
     }
   },
@@ -70,7 +70,7 @@
         "data_description": {
           "unit_system": "Unidades de los botones de dispensado rápido, la cantidad a dispensar, el sensor del último dispensado y la unidad predeterminada de la acción dispensar.",
           "max_run_minutes": "Apaga el agua esta cantidad de minutos después de encenderla desde Home Assistant, salvo que se haya apagado antes. 0 desactiva el límite.",
-          "push_updates": "Escucha el canal en tiempo real de Kohler, como la app Konnect, y actualiza en cuanto cambia el grifo. Añade una entrada de Home Assistant a los dispositivos de notificación de tu cuenta Kohler. El sondeo sigue como respaldo."
+          "push_updates": "Escucha el canal en tiempo real de Kohler, como la app Konnect, y actualiza en cuanto cambia la llave. Agrega una entrada de Home Assistant a los dispositivos de notificación de tu cuenta Kohler. El sondeo sigue como respaldo."
         }
       }
     }
@@ -160,7 +160,7 @@
         }
       },
       "handle_state": {
-        "name": "Maneta",
+        "name": "Manija",
         "state": {
           "open": "Abierta",
           "closed": "Cerrada"
@@ -193,19 +193,19 @@
       "message": "La nube de Kohler no aceptó el comando: {error}"
     },
     "not_loaded": {
-      "message": "No hay ningún grifo Kohler Sensate configurado y en funcionamiento."
+      "message": "No hay ninguna llave Kohler Sensate configurada y en funcionamiento."
     },
     "device_not_found": {
-      "message": "El dispositivo elegido no es un grifo Kohler Sensate cargado."
+      "message": "El dispositivo elegido no es una llave Kohler Sensate cargada."
     },
     "device_required": {
-      "message": "Hay más de un grifo Sensate configurado. Elige cuál debe dispensar."
+      "message": "Hay más de una llave Sensate configurada. Elige cuál debe dispensar."
     },
     "amount_out_of_range": {
       "message": "Elige una cantidad entre {min} y {max} {unit}."
     },
     "faucet_offline": {
-      "message": "{name} está desconectado: la nube de Kohler no llega al grifo. Revisa su alimentación y Wi-Fi."
+      "message": "{name} no tiene conexión: la nube de Kohler no llega a la llave. Revisa su alimentación y Wi-Fi."
     },
     "rate_limited": {
       "message": "Kohler está limitando las solicitudes. Inténtalo de nuevo en {seconds} segundos."
@@ -217,11 +217,11 @@
   "services": {
     "dispense": {
       "name": "Dispensar agua",
-      "description": "Dispensa una cantidad medida de agua de un grifo Sensate.",
+      "description": "Dispensa una cantidad medida de agua de una llave Sensate.",
       "fields": {
         "device_id": {
-          "name": "Grifo",
-          "description": "El grifo que dispensará. Opcional si solo hay un grifo configurado."
+          "name": "Llave",
+          "description": "La llave que dispensará. Opcional si solo hay una llave configurada."
         },
         "amount": {
           "name": "Cantidad",
@@ -245,11 +245,11 @@
   "issues": {
     "faucet_not_found": {
       "title": "{name} ya no está en tu cuenta Kohler",
-      "description": "Kohler ya no muestra este grifo en tu cuenta, así que Home Assistant no puede leerlo ni controlarlo. Si lo has quitado o sustituido en la app Konnect, elimínalo de Home Assistant y vuelve a añadirlo.\n\nÚltimo error: {error}"
+      "description": "Kohler ya no muestra esta llave en tu cuenta, así que Home Assistant no puede leerla ni controlarla. Si la quitaste o reemplazaste en la app Konnect, elimínala de Home Assistant y vuelve a agregarla.\n\nÚltimo error: {error}"
     },
     "api_changed": {
       "title": "Kohler sigue rechazando las solicitudes de {name}",
-      "description": "La nube de Kohler ha rechazado varias solicitudes seguidas; normalmente significa que Kohler ha cambiado su API. Busca una actualización de esta integración. Si no la hay, abre una incidencia y adjunta los diagnósticos de la integración.\n\nÚltimo error: {error}"
+      "description": "La nube de Kohler rechazó varias solicitudes seguidas; normalmente significa que Kohler cambió su API. Busca una actualización de esta integración. Si no la hay, abre un reporte y adjunta los diagnósticos de la integración.\n\nÚltimo error: {error}"
     }
   }
 }

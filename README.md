@@ -29,11 +29,11 @@ directly, signing in with your normal Konnect email and password.
   button, and the `kohler_sensate.dispense` action for automations, scripts
   and voice.
 - **Metric or imperial**: chosen per faucet in the integration options.
-- **Water usage**: total and today, as Kohler counts it, ready for Home
-  Assistant's Energy dashboard.
+- **Water usage**: a lifetime total and today's use, as Kohler counts them,
+  ready for Home Assistant's Energy dashboard.
 - **Sensors**: status, handle position, last amount dispensed, leak detected,
-  currently dispensing (including presets run from the app), and firmware
-  updates.
+  currently dispensing (including presets run from the app), connection, and
+  firmware updates.
 - **Leak alerts you can clear**: acknowledge a leak once it's dealt with; a
   new leak turns the alert back on.
 - **Water safety limit**: water turned on from Home Assistant turns off by
@@ -50,7 +50,8 @@ directly, signing in with your normal Konnect email and password.
 - **Repair notices** when the faucet disappears from your account or Kohler's
   API changes, and **diagnostics** with personal data redacted.
 - **In your language**: English, Dutch, French, German, Italian, Polish,
-  Portuguese (Brazil), Spanish and Swedish. Other languages show English.
+  Portuguese (Brazil), Spanish (Spain and Latin America) and Swedish. Other
+  languages show English.
 
 ## Requirements
 
@@ -117,10 +118,10 @@ Go to **Settings → Devices & services → Kohler Sensate → Configure**:
 
 #### Units
 
-| Units    | Quick buttons            | Dispense amount | Last dispensed | Default action unit |
-| -------- | ------------------------ | --------------- | -------------- | ------------------- |
-| Metric   | 50 mL … 3 L              | mL              | mL             | mL                  |
-| Imperial | ¼ cup … 1 gallon         | fl oz           | fl oz          | fl oz               |
+| Units    | Quick buttons            | Dispense amount | Last dispensed | Water usage | Default action unit |
+| -------- | ------------------------ | --------------- | -------------- | ----------- | ------------------- |
+| Metric   | 50 mL … 3 L              | mL              | mL             | L           | mL                  |
+| Imperial | ¼ cup … 1 gallon         | fl oz           | fl oz          | gal         | fl oz               |
 
 New faucets default to your Home Assistant unit system. Changing the option
 reloads the faucet and replaces the quick-dispense buttons with the other
@@ -130,24 +131,49 @@ app.
 
 ## Entities
 
-| Entity                       | Type                     | Description |
-| ---------------------------- | ------------------------ | ----------- |
-| Water                        | Switch                   | Turns the water on or off. |
-| Dispense *amount*            | Button (7)               | Dispenses a fixed amount (see the table above). |
-| Dispense amount              | Number                   | The amount for *Dispense set amount*: 10–4000 mL or 0.5–135 fl oz. Kept across restarts. |
-| Dispense set amount          | Button                   | Dispenses the *Dispense amount*. |
-| Status                       | Sensor                   | `off` or `on`, shown in your language. |
-| Handle                       | Sensor (diagnostic)      | Position of the manual handle: `open` or `closed`. |
-| Dispense progress            | Sensor (diagnostic), disabled | Kohler's progress field. The Sensate leaves it at `not_started`, even mid-dispense; use *Dispensing*. |
-| Last dispensed               | Sensor                   | The most recent dispense amount, from Home Assistant or the faucet. |
-| Total water used             | Sensor (water)           | Everything Kohler has counted for the faucet. For the [Energy dashboard](#water-usage-and-the-energy-dashboard). |
-| Water used today             | Sensor (water)           | Today's usage, as the Konnect app's daily chart shows it. |
-| Leak                         | Binary sensor (moisture) | On while Kohler reports a leak that hasn't been cleared. Attributes: `events` (all events in Kohler's history), `uncleared_events`, and `latest`. |
-| Clear leak alert             | Button                   | Marks the current leak events as dealt with, which turns *Leak* off. |
-| Dispensing                   | Binary sensor (running)  | On while a measured amount is dispensed: from Home Assistant, or a preset run from the Konnect app (with instant updates). Attribute: `preset`, when it's a preset. |
-| Connected                    | Binary sensor (diagnostic) | Whether Kohler's cloud can reach the faucet. Attribute: `last_connected`. |
-| Firmware                     | Update                   | Installed and latest firmware. Shows when Kohler has an update; install it from the Konnect app. |
-| Preset: *name*               | Button                   | One per preset saved in the Konnect app. See [Presets](#konnect-presets). |
+Each faucet is a device with the entities below. Entity IDs follow the
+faucet's name; the examples are for a faucet named *Kitchen*.
+
+### Sensors
+
+| Sensor | Entity ID | State | Updates | Description |
+| ------ | --------- | ----- | ------- | ----------- |
+| Status | `sensor.kitchen_status` | `on` or `off` | Live | Whether water is flowing, however it started: by hand, hands-free, a dispense or Home Assistant. |
+| Total water used | `sensor.kitchen_total_water_used` | L or gal | Every 30 min | Lifetime total: all the water Kohler has recorded for the faucet, up to now. Only goes up. For the [Energy dashboard](#water-usage-and-the-energy-dashboard). |
+| Water used today | `sensor.kitchen_water_used_today` | L or gal | Every 30 min | Water used today, the same figure as the Konnect app's daily chart. Starts over at midnight. |
+| Last dispensed | `sensor.kitchen_last_dispensed` | mL or fl oz | Each dispense | The most recent amount dispensed from Home Assistant: a button, a preset or the action. Kept across restarts. Kohler doesn't report amounts, so dispenses started elsewhere aren't included. |
+| Handle | `sensor.kitchen_handle` | `open` or `closed` | Live | Diagnostic. Position of the manual handle. |
+| Dispense progress | `sensor.kitchen_dispense_progress` | `not_started` | Live | Diagnostic, disabled by default. Kohler's progress field, which the Sensate never moves, even mid-dispense. Use *Dispensing* instead. |
+
+*Live* means within a second or two with [instant updates](#instant-updates),
+otherwise within 30 seconds. Water usage is also read about 2 minutes after
+the water stops, and just after midnight. *Status* and *Handle* show their
+states in your language; automations and templates use the values above.
+
+### Binary sensors
+
+| Binary sensor | Entity ID | On when | Updates | Attributes |
+| ------------- | --------- | ------- | ------- | ---------- |
+| Leak | `binary_sensor.kitchen_leak` | Kohler reports a leak that hasn't been cleared with *Clear leak alert*. | Every 5 min | `events`: leak events in Kohler's history. `uncleared_events`: those not cleared yet. `latest`: the newest event. |
+| Dispensing | `binary_sensor.kitchen_dispensing` | A measured amount is dispensing: from Home Assistant, or a preset run from the Konnect app (needs instant updates). Turns off when the water stops, or after 2 minutes at most. | Live | `preset`: the preset's name, when it's a preset. |
+| Connected | `binary_sensor.kitchen_connected` | Kohler's cloud can reach the faucet. Diagnostic. | Each poll | `last_connected`: when the faucet last connected, as Kohler reports it. |
+
+### Controls
+
+| Control | Entity ID | Type | Description |
+| ------- | --------- | ---- | ----------- |
+| Water | `switch.kitchen_water` | Switch | Turns the water on or off. Water turned on here turns off by itself after the [water safety limit](#options). |
+| Dispense *amount* | `button.kitchen_dispense_250_ml`, … | Button (7) | Dispenses a fixed amount. The amounts follow the [units](#units) option. |
+| Dispense amount | `number.kitchen_dispense_amount` | Number | How much *Dispense set amount* pours: 10–4000 mL or 0.5–135 fl oz. Kept across restarts. |
+| Dispense set amount | `button.kitchen_dispense_set_amount` | Button | Dispenses the *Dispense amount*. |
+| Preset: *name* | `button.kitchen_preset_one_cup`, … | Button | One per preset saved in the Konnect app. Attributes: `amount` and `unit`. See [Konnect presets](#konnect-presets). |
+| Clear leak alert | `button.kitchen_clear_leak_alert` | Button | Marks the current leak events as dealt with, which turns *Leak* off. |
+
+### Firmware
+
+| Update | Entity ID | On when | Description |
+| ------ | --------- | ------- | ----------- |
+| Firmware | `update.kitchen_firmware` | Kohler has newer firmware than the faucet's. | Diagnostic. Installed and latest versions, checked every 5 minutes. Install updates from the Konnect app; Home Assistant shows when one is in progress. |
 
 While *Connected* is off, entities that show or control the live faucet are
 unavailable. *Leak*, *Clear leak alert*, *Dispense amount*, *Last
@@ -241,8 +267,9 @@ Firmware and leak history are checked every 5 minutes, and whenever the feed
 reports a change, so a leak shows up within about 5 minutes of Kohler
 reporting it.
 
-Water usage is read every 30 minutes, and about 2 minutes after the water
-stops, once Kohler has counted it.
+Water usage is read every 30 minutes, about 2 minutes after the water stops
+(once Kohler has counted it), and at the first poll after midnight, so
+*Water used today* starts over on time.
 
 Without the feed, if someone uses the faucet by hand, Home Assistant can take
 up to 30 seconds to notice, and presets run from the app don't show as
@@ -280,12 +307,22 @@ minutes.
 
 ### Water usage and the Energy dashboard
 
-*Total water used* counts every liter Kohler has recorded for the faucet,
-the same figures as the Konnect app's charts. It only ever goes up, so it
-works as a water meter: go to **Settings → Dashboards → Energy**, then under
-**Water consumption** select **Add water source** and pick *Total water
-used*. The Energy dashboard then shows the faucet's usage per day, week and
-month.
+Both water sensors show Kohler's own figures, the same as the Konnect app's
+charts:
+
+- *Total water used* is the faucet's lifetime total. The integration adds up
+  every month Kohler has on record for the faucet, from its first recorded
+  use through the current month so far. If Kohler ever reports less, as from
+  a partial reply, the sensor keeps its highest reading, so the Energy
+  dashboard never mistakes it for a meter reset.
+- *Water used today* is today's use, by Home Assistant's time zone. It starts
+  over at midnight.
+
+Because the total only ever goes up, it works as a water meter: go to
+**Settings → Dashboards → Energy**, then under **Water consumption** select
+**Add water source** and pick *Total water used*. The dashboard shows usage
+per hour, day, week and month from when the sensor first appeared in Home
+Assistant; Kohler's earlier history isn't imported.
 
 It counts water used any way: by hand, hands-free or dispensed. Imperial
 faucets show gallons; to change the unit, open the sensor's settings.
@@ -336,9 +373,9 @@ faucets show gallons; to change the unit, open the sensor's settings.
   ```
 
 - **Diagnostics**: on the integration's page, select **⋮** next to the
-  faucet, then **Download diagnostics**. Your email, password, device ID, serial number and location
-  are redacted. Attach the file when you open an
-  [issue](https://github.com/kedube/ha-kohler-sensate/issues).
+  faucet, then **Download diagnostics**. Your email, password, account ID,
+  device ID, serial number and location are redacted. Attach the file when
+  you open an [issue](https://github.com/kedube/ha-kohler-sensate/issues).
 
 ## Privacy and security
 
@@ -366,7 +403,18 @@ faucets show gallons; to change the unit, open the sensor's settings.
 Instant updates registered a "HomeAssistant" entry among your Kohler
 account's notification devices; deleting the faucet doesn't remove it.
 
-## Upgrading from 0.1
+## Upgrading
+
+### From 0.3
+
+- *Status* and *Handle* report `on`/`off` and `open`/`closed` instead of
+  `On`/`Off` and `OPEN`/`CLOSED`. Update automations and templates that
+  compare them with the old text. The *Water* switch is unchanged.
+- *Dispense progress* is disabled for new installs. If you already have it,
+  it stays enabled; disable it under the entity's settings, since it never
+  changes.
+
+### From 0.1
 
 - Home Assistant 2026.3 or newer is required (0.1 allowed 2024.8).
 - Entity IDs are unchanged.

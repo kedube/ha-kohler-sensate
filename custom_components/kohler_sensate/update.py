@@ -46,6 +46,12 @@ class SensateFirmwareUpdate(SensateEntity, UpdateEntity):
         super().__init__(coordinator, "firmware")
 
     @property
+    def entity_picture(self) -> str | None:
+        # Update entities show the integration's logo by default; use Home
+        # Assistant's update icons, which also show when one is available.
+        return None
+
+    @property
     def _firmware(self) -> dict[str, Any]:
         firmware = self.coordinator.about.get("firmware")
         return firmware if isinstance(firmware, dict) else {}

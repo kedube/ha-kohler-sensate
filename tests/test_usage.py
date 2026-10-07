@@ -99,6 +99,24 @@ async def test_refreshed_soon_after_the_water_stops(
     assert float(hass.states.get(TODAY).state) == pytest.approx(2.0)
 
 
+async def test_today_starts_over_at_midnight(
+    freezer: FrozenDateTimeFactory,
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    kohler: FakeKohler,
+) -> None:
+    await hass.config.async_set_time_zone("America/Los_Angeles")
+    freezer.move_to("2026-10-07T23:59:00-07:00")
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    assert float(hass.states.get(TODAY).state) == pytest.approx(1.5274)
+
+    kohler.usage_days = {"2026-10-08": 0.0}
+    await _advance(hass, freezer, timedelta(minutes=1))
+    # The first poll of the new day, not the next 30-minute refresh.
+    assert float(hass.states.get(TODAY).state) == 0.0
+    assert _usage_queries(kohler)[-1]["FromDate"] == "2026-10-08"
+
+
 async def test_refreshed_now_and_then(
     freezer: FrozenDateTimeFactory,
     hass: HomeAssistant,

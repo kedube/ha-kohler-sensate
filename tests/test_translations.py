@@ -57,6 +57,13 @@ async def test_translations_load(hass: HomeAssistant) -> None:
     names = await async_get_translations(hass, "pt-BR", "entity", {DOMAIN})
     assert names[f"component.{DOMAIN}.entity.switch.water.name"] == "Água"
 
+    # Each Spanish has its own word for the faucet.
+    key = f"component.{DOMAIN}.config.step.pick_device.data.device_id"
+    names = await async_get_translations(hass, "es", "config", {DOMAIN})
+    assert names[key] == "Grifo"
+    names = await async_get_translations(hass, "es-419", "config", {DOMAIN})
+    assert names[key] == "Llave"
+
     # A language without a file falls back to English.
     names = await async_get_translations(hass, "fi", "entity", {DOMAIN})
     assert names[f"component.{DOMAIN}.entity.switch.water.name"] == "Water"

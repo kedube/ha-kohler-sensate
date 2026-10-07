@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from functools import partial
 import hashlib
 import json
@@ -172,6 +172,7 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.usage_today_liters: float | None = None
         self._usage_fetched_at: float | None = None
         self._usage_due_at: float | None = None
+        self._usage_day: date | None = None
         # Optional instant updates; set up by __init__.py when enabled.
         self.push: SensatePush | None = None
         self.push_verified = False
@@ -330,16 +331,19 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_refresh_usage(self) -> None:
         """Refresh water usage now and then, and soon after the water stops."""
         now = time.monotonic()
+        today = dt_util.now().date()
         if not (
             self._usage_fetched_at is None
             or now - self._usage_fetched_at >= USAGE_REFRESH_INTERVAL.total_seconds()
             or (self._usage_due_at is not None and now >= self._usage_due_at)
+            # A new day starts "today" over, without waiting out the interval.
+            or today != self._usage_day
         ):
             return
         # A failure waits for the next interval rather than retrying each poll.
         self._usage_fetched_at = now
         self._usage_due_at = None
-        today = dt_util.now().date()
+        self._usage_day = today
         try:
             months = await self.api.async_get_usage(
                 self.device_id, USAGE_HISTORY_START, today, "MONTH"

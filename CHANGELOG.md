@@ -4,6 +4,21 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Unreleased
+
+### Added
+
+- Latin American Spanish translation, which calls the faucet a *llave*.
+
+### Fixed
+
+- *Firmware* shows Home Assistant's update icon instead of the integration's
+  logo.
+- *Water used today* starts over at midnight, instead of showing the previous
+  day's figure for up to 30 minutes.
+- Spanish uses the words used in Spain, such as *grifo*, instead of the
+  English word *faucet*.
+
 ## 0.4.0
 
 ### Breaking changes

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.components.update import ATTR_IN_PROGRESS, UpdateEntityFeature
-from homeassistant.const import ATTR_SUPPORTED_FEATURES
+from homeassistant.const import ATTR_ENTITY_PICTURE, ATTR_SUPPORTED_FEATURES
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -24,6 +24,8 @@ async def test_up_to_date(hass: HomeAssistant, setup_entry: MockConfigEntry) -> 
     assert state.attributes[ATTR_IN_PROGRESS] is False
     # Updates are installed from the Konnect app, not Home Assistant.
     assert not state.attributes[ATTR_SUPPORTED_FEATURES] & UpdateEntityFeature.INSTALL
+    # An icon, not the integration's logo.
+    assert ATTR_ENTITY_PICTURE not in state.attributes
 
 
 async def test_newer_firmware_available(
