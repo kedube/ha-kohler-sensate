@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -18,6 +21,27 @@ def as_text(value: Any, nested_key: str = "version") -> str | None:
     if value is None or value == "":
         return None
     return str(value)
+
+
+def add_with_presets(
+    coordinator: SensateCoordinator, entry: ConfigEntry, add: Callable[[], None]
+) -> None:
+    """Call ``add`` once the faucet has a Konnect preset, now or later.
+
+    Faucets without presets get no preset entities.
+    """
+    added = False
+
+    @callback
+    def _check() -> None:
+        nonlocal added
+        if not added and coordinator.presets:
+            added = True
+            add()
+
+    _check()
+    if not added:
+        entry.async_on_unload(coordinator.async_add_listener(_check))
 
 
 class SensateEntity(CoordinatorEntity[SensateCoordinator]):

@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Eroga la quantità impostata"
       },
+      "dispense_preset": {
+        "name": "Eroga la preimpostazione"
+      },
       "clear_leak": {
         "name": "Cancella avviso di perdita"
-      },
-      "preset": {
-        "name": "Preimpostazione: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Quantità da erogare"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Preimpostazione"
       }
     },
     "sensor": {

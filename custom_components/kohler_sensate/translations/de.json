@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Eingestellte Menge dosieren"
       },
+      "dispense_preset": {
+        "name": "Voreinstellung dosieren"
+      },
       "clear_leak": {
         "name": "Leckalarm zurücksetzen"
-      },
-      "preset": {
-        "name": "Voreinstellung: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Dosiermenge"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Voreinstellung"
       }
     },
     "sensor": {

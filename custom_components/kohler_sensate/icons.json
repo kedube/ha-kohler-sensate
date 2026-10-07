@@ -36,16 +36,21 @@
       "dispense_set_amount": {
         "default": "mdi:water-plus"
       },
+      "dispense_preset": {
+        "default": "mdi:playlist-play"
+      },
       "clear_leak": {
         "default": "mdi:water-check"
-      },
-      "preset": {
-        "default": "mdi:playlist-play"
       }
     },
     "number": {
       "dispense_amount": {
         "default": "mdi:beaker-outline"
+      }
+    },
+    "select": {
+      "preset": {
+        "default": "mdi:playlist-star"
       }
     },
     "sensor": {

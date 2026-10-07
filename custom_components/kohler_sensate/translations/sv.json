@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Tappa inställd mängd"
       },
+      "dispense_preset": {
+        "name": "Tappa förinställning"
+      },
       "clear_leak": {
         "name": "Rensa läckagelarm"
-      },
-      "preset": {
-        "name": "Förinställning: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Tappmängd"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Förinställning"
       }
     },
     "sensor": {

@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Distribuer la quantité définie"
       },
+      "dispense_preset": {
+        "name": "Distribuer le préréglage"
+      },
       "clear_leak": {
         "name": "Effacer l'alerte de fuite"
-      },
-      "preset": {
-        "name": "Préréglage : {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Quantité à distribuer"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Préréglage"
       }
     },
     "sensor": {

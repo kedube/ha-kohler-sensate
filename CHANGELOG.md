@@ -4,6 +4,15 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Unreleased
+
+### Breaking changes
+
+- Konnect presets are chosen from a *Preset* dropdown and dispensed with one
+  *Dispense preset* button, instead of a button per preset, so any number of
+  presets fits in two entities. The old *Preset: name* buttons are removed;
+  update dashboards, automations and scripts that pressed them.
+
 ## 0.5.0
 
 ### Added

@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Dispensar cantidad elegida"
       },
+      "dispense_preset": {
+        "name": "Dispensar preajuste"
+      },
       "clear_leak": {
         "name": "Borrar alerta de fuga"
-      },
-      "preset": {
-        "name": "Preajuste: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Cantidad a dispensar"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Preajuste"
       }
     },
     "sensor": {

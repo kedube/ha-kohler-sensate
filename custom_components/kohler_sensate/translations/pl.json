@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Nalej ustawioną ilość"
       },
+      "dispense_preset": {
+        "name": "Nalej według ustawienia wstępnego"
+      },
       "clear_leak": {
         "name": "Wyczyść alert wycieku"
-      },
-      "preset": {
-        "name": "Ustawienie wstępne: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Ilość do nalania"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Ustawienie wstępne"
       }
     },
     "sensor": {

@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Dispense set amount"
       },
+      "dispense_preset": {
+        "name": "Dispense preset"
+      },
       "clear_leak": {
         "name": "Clear leak alert"
-      },
-      "preset": {
-        "name": "Preset: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Dispense amount"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Preset"
       }
     },
     "sensor": {

@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Ingestelde hoeveelheid doseren"
       },
+      "dispense_preset": {
+        "name": "Voorinstelling doseren"
+      },
       "clear_leak": {
         "name": "Lekmelding wissen"
-      },
-      "preset": {
-        "name": "Voorinstelling: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Doseerhoeveelheid"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Voorinstelling"
       }
     },
     "sensor": {

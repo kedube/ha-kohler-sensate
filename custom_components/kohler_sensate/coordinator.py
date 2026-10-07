@@ -143,6 +143,8 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._config_fetched_at: float | None = None
         self._config_due = False
         self.presets: dict[str, SensatePreset] = {}
+        # The preset id chosen in the Preset select; see chosen_preset.
+        self.preset_choice: str | None = None
         self.connection_state: str | None = None
         self.last_connected: Any = None
         self.seen_values: dict[str, set[str]] = {
@@ -674,6 +676,17 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
             or (self._preset_since is not None and now - self._preset_since < limit)
         )
+
+    @property
+    def chosen_preset(self) -> SensatePreset | None:
+        """The preset "Dispense preset" pours: the one chosen, else the first.
+
+        A chosen preset that's deleted in the app falls back to the first,
+        and comes back if it reappears.
+        """
+        if (preset := self.presets.get(self.preset_choice or "")) is not None:
+            return preset
+        return next(iter(self.presets.values()), None)
 
     @property
     def dispensing_preset(self) -> str | None:

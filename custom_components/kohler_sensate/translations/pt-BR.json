@@ -133,16 +133,21 @@
       "dispense_set_amount": {
         "name": "Dosar quantidade definida"
       },
+      "dispense_preset": {
+        "name": "Dosar predefinição"
+      },
       "clear_leak": {
         "name": "Limpar alerta de vazamento"
-      },
-      "preset": {
-        "name": "Predefinição: {title}"
       }
     },
     "number": {
       "dispense_amount": {
         "name": "Quantidade a dosar"
+      }
+    },
+    "select": {
+      "preset": {
+        "name": "Predefinição"
       }
     },
     "sensor": {

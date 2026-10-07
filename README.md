@@ -44,7 +44,8 @@ directly, signing in with your normal Konnect email and password.
 - **Instant updates**: listens to Kohler's real-time feed like the Konnect
   app does, so changes show up within a second or two, with light polling as
   a safety net.
-- **Konnect presets**: a button for each preset saved in the app.
+- **Konnect presets**: choose any preset saved in the app from a dropdown
+  and dispense it, however many presets you have.
 - **Automatic sign-in**: sessions renew on their own; you're only asked to
   sign in again if Kohler rejects your password.
 - **Repair notices** when the faucet disappears from your account or Kohler's
@@ -166,7 +167,8 @@ states in your language; automations and templates use the values above.
 | Dispense *amount* | `button.kitchen_dispense_250_ml`, … | Button (7) | Dispenses a fixed amount. The amounts follow the [units](#units) option. |
 | Dispense amount | `number.kitchen_dispense_amount` | Number | How much *Dispense set amount* pours: 10–4000 mL or 0.5–135 fl oz. Kept across restarts. |
 | Dispense set amount | `button.kitchen_dispense_set_amount` | Button | Dispenses the *Dispense amount*. |
-| Preset: *name* | `button.kitchen_preset_one_cup`, … | Button | One per preset saved in the Konnect app. Attributes: `amount` and `unit`. See [Konnect presets](#konnect-presets). |
+| Preset | `select.kitchen_preset` | Select | Which preset saved in the Konnect app *Dispense preset* pours. Attributes: `amount` and `unit`. See [Konnect presets](#konnect-presets). |
+| Dispense preset | `button.kitchen_dispense_preset` | Button | Dispenses the chosen *Preset*. |
 | Clear leak alert | `button.kitchen_clear_leak_alert` | Button | Marks the current leak events as dealt with, which turns *Leak* off. |
 
 ### Firmware
@@ -176,8 +178,8 @@ states in your language; automations and templates use the values above.
 | Firmware | `update.kitchen_firmware` | Kohler has newer firmware than the faucet's. | Diagnostic. Installed and latest versions, checked every 5 minutes. Install updates from the Konnect app; Home Assistant shows when one is in progress. |
 
 While *Connected* is off, entities that show or control the live faucet are
-unavailable. *Leak*, *Clear leak alert*, *Dispense amount*, *Last
-dispensed*, the water usage sensors and *Firmware* stay available.
+unavailable. *Leak*, *Clear leak alert*, *Dispense amount*, *Preset*,
+*Last dispensed*, the water usage sensors and *Firmware* stay available.
 
 ## Actions
 
@@ -299,11 +301,34 @@ connected, how many messages it has received, and how many changes it missed.
 
 ### Konnect presets
 
-Presets saved in the Konnect app (such as "A Glass of Water") get a button
-each, which dispenses the preset's amount using the same command as the
-other dispense buttons. Its `amount` and `unit` attributes show how much.
-Presets added or removed in the app appear or go unavailable within 5
-minutes.
+Presets saved in the Konnect app (such as "A Glass of Water") are listed in
+the *Preset* dropdown, in the app's order, so any number of them fits in two
+entities. Choose one, then press *Dispense preset*: it dispenses the preset's
+amount using the same command as the other dispense buttons. The dropdown's
+`amount` and `unit` attributes show how much.
+
+- Until you choose, the first preset is selected. Your choice is kept across
+  restarts, and follows the preset if you rename it in the app.
+- If the chosen preset is deleted in the app, the first one is selected
+  instead.
+- Presets with the same name are listed as "One Cup", "One Cup (2)" and so
+  on.
+- Presets added, renamed or deleted in the app show up within 5 minutes. A
+  faucet without presets gets neither entity until the first one is saved.
+
+In an automation or script, choose the preset, then press the button:
+
+```yaml
+actions:
+  - action: select.select_option
+    target:
+      entity_id: select.kitchen_preset
+    data:
+      option: A Glass of Water
+  - action: button.press
+    target:
+      entity_id: button.kitchen_dispense_preset
+```
 
 ### Water usage and the Energy dashboard
 
@@ -404,6 +429,13 @@ Instant updates registered a "HomeAssistant" entry among your Kohler
 account's notification devices; deleting the faucet doesn't remove it.
 
 ## Upgrading
+
+### From 0.4 or 0.5
+
+- The *Preset: name* buttons are replaced by the *Preset* dropdown and one
+  *Dispense preset* button, and the old buttons are removed. Update
+  dashboards, automations and scripts that pressed them; see
+  [Konnect presets](#konnect-presets) for an example.
 
 ### From 0.3
 

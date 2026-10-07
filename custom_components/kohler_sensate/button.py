@@ -1,21 +1,18 @@
-"""Button platform: one-tap quick-dispense amounts + dispense the set amount."""
+"""Button platform: quick-dispense amounts, the set amount and the chosen preset."""
 
 from __future__ import annotations
 
-from typing import Any
-
 from homeassistant.components.button import ButtonEntity
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SensateConfigEntry
-from .api import SensatePreset
 from .const import DISPENSE_MAX_ML, DISPENSE_MIN_ML, DOMAIN
 from .coordinator import SensateCoordinator
-from .entity import SensateEntity
-from .units import ALL_QUICK_KEYS, QuickAmount, from_ml
+from .entity import SensateEntity, add_with_presets
+from .units import ALL_QUICK_KEYS, QuickAmount
 
 # Send one command at a time.
 PARALLEL_UPDATES = 1
@@ -32,9 +29,13 @@ async def async_setup_entry(
     # Drop the other unit system's quick buttons left over from an options change.
     keep = {f"{coordinator.device_id}_dispense_{q.key}" for q in quick}
     stale = {f"{coordinator.device_id}_dispense_{key}" for key in ALL_QUICK_KEYS} - keep
+    # 0.4 had a button per preset; the Preset select replaced them.
+    old_preset = f"{coordinator.device_id}_preset_"
     ent_reg = er.async_get(hass)
     for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
-        if reg_entry.domain == "button" and reg_entry.unique_id in stale:
+        if reg_entry.domain == "button" and (
+            reg_entry.unique_id in stale or reg_entry.unique_id.startswith(old_preset)
+        ):
             ent_reg.async_remove(reg_entry.entity_id)
 
     entities: list[ButtonEntity] = [
@@ -44,18 +45,11 @@ async def async_setup_entry(
     entities.append(SensateClearLeakButton(coordinator))
     async_add_entities(entities)
 
-    # Konnect presets come and go; add a button for each new one.
-    known: set[str] = set()
-
-    @callback
-    def _add_presets() -> None:
-        new = [p for p in coordinator.presets.values() if p.preset_id not in known]
-        if new:
-            known.update(p.preset_id for p in new)
-            async_add_entities(SensatePresetButton(coordinator, p) for p in new)
-
-    _add_presets()
-    entry.async_on_unload(coordinator.async_add_listener(_add_presets))
+    add_with_presets(
+        coordinator,
+        entry,
+        lambda: async_add_entities([SensateDispensePresetButton(coordinator)]),
+    )
 
 
 class SensateQuickDispenseButton(SensateEntity, ButtonEntity):
@@ -98,40 +92,24 @@ class SensateClearLeakButton(SensateEntity, ButtonEntity):
         await self.coordinator.async_clear_leaks()
 
 
-class SensatePresetButton(SensateEntity, ButtonEntity):
-    """Dispense a preset saved in the Konnect app.
+class SensateDispensePresetButton(SensateEntity, ButtonEntity):
+    """Dispense the preset chosen in the Preset select.
 
     Uses the verified dispense command with the preset's amount, not Kohler's
     untested preset command.
     """
 
-    _attr_translation_key = "preset"
+    _attr_translation_key = "dispense_preset"
 
-    def __init__(self, coordinator: SensateCoordinator, preset: SensatePreset) -> None:
-        super().__init__(coordinator, f"preset_{preset.preset_id}")
-        self._preset_id = preset.preset_id
-        self._attr_translation_placeholders = {"title": preset.title}
-
-    @property
-    def _preset(self) -> SensatePreset | None:
-        return self.coordinator.presets.get(self._preset_id)
+    def __init__(self, coordinator: SensateCoordinator) -> None:
+        super().__init__(coordinator, "dispense_preset")
 
     @property
     def available(self) -> bool:
-        return self._preset is not None and super().available
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        if (preset := self._preset) is None:
-            return {}
-        profile = self.coordinator.profile
-        return {
-            "amount": round(from_ml(preset.liters * 1000, profile.number_unit), 2),
-            "unit": profile.number_native_unit,
-        }
+        return bool(self.coordinator.presets) and super().available
 
     async def async_press(self) -> None:
-        if (preset := self._preset) is None:
+        if (preset := self.coordinator.chosen_preset) is None:
             return
         if not DISPENSE_MIN_ML <= preset.liters * 1000 <= DISPENSE_MAX_ML:
             raise HomeAssistantError(
