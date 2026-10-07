@@ -11,7 +11,7 @@ from .const import DOMAIN
 from .coordinator import SensateCoordinator
 
 
-def _text(value: Any, nested_key: str = "version") -> str | None:
+def as_text(value: Any, nested_key: str = "version") -> str | None:
     """Return ``value`` as text; dicts like {"version": "16.0"} are unwrapped."""
     if isinstance(value, dict):
         value = value.get(nested_key)
@@ -36,11 +36,11 @@ class SensateEntity(CoordinatorEntity[SensateCoordinator]):
             identifiers={(DOMAIN, coordinator.device_id)},
             manufacturer="Kohler",
             model="Sensate",
-            model_id=_text(about.get("model")) or "SEN",
+            model_id=as_text(about.get("model")) or "SEN",
             name=coordinator.config_entry.title,
-            sw_version=_text(about.get("firmware")),
-            hw_version=_text(about.get("hardware")),
-            serial_number=_text(about.get("serialNumber") or about.get("serial")),
+            sw_version=as_text(about.get("firmware")),
+            hw_version=as_text(about.get("hardware")),
+            serial_number=as_text(about.get("serialNumber") or about.get("serial")),
         )
 
     @property

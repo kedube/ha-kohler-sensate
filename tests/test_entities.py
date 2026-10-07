@@ -232,10 +232,7 @@ async def test_leak_and_dispensing_sensors(
     leak = hass.states.get("binary_sensor.kitchen_leak")
     assert leak.state == "on"
     assert leak.attributes["events"] == 1
+    # Not the Sensate's own way, but kept for firmware that reports progress.
     assert hass.states.get("binary_sensor.kitchen_dispensing").state == "on"
-    assert (
-        hass.states.get("sensor.kitchen_dispense_progress").state
-        == "DispenseInProgress"
-    )
     # A dispense started outside Home Assistant is picked up from the state.
     assert hass.states.get("sensor.kitchen_last_dispensed").state == "500.0"

@@ -4,6 +4,38 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Unreleased
+
+### Breaking changes
+
+- *Status* and *Handle* show translated states, so their values are now
+  `off`/`on` and `open`/`closed` instead of Kohler's `Off`/`On` and
+  `OPEN`/`CLOSED`. Update automations and templates that compare them with
+  the old text. The *Water* switch is unchanged.
+
+### Added
+
+- Water usage from Kohler's own history: *Total water used*, which works as
+  a water meter in the Energy dashboard, and *Water used today*.
+- *Firmware* update entity: shows when Kohler has newer firmware for the
+  faucet. Updates are still installed from the Konnect app.
+- *Dispensing* also shows presets run from the Konnect app, with the
+  preset's name, when instant updates are on.
+
+### Fixed
+
+- Konnect presets never appeared: the integration asked Kohler for them at
+  an address that doesn't exist. Every preset saved in the app now gets a
+  button, enabled from the start.
+- *Dispensing* never turned on, because the Sensate doesn't report dispense
+  progress. It now follows dispenses started from Home Assistant until the
+  faucet reports the water off.
+
+### Changed
+
+- *Dispense progress* is disabled for new installs and moved to the
+  diagnostic entities, since the Sensate always reports `NotStarted`.
+
 ## 0.3.0
 
 ### Changed

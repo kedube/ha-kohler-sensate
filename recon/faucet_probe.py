@@ -6,17 +6,18 @@ the Konnect APK revealed the faucet has its own endpoint family:
 
   READS  (GET):
     /devices/api/v1/device-management/faucet-state/{device_id}
-    /devices/api/v1/device-management/faucet-usage/{device_id}
     /devices/api/v1/device-management/faucet-configuration/{device_id}
-    /devices/api/v1/device-management/faucet-experience/{device_id}
+    /devices/api/v1/device-management/faucet-usage/{device_id}
+        ?FromDate=YYYY-MM-DD&ToDate=YYYY-MM-DD&Interval=DAY|MONTH
+    /devices/api/v1/device-management/customer-experience/{tenant_id}
+        (presets of every device; the Sensate's are in "sensateExperiences")
 
   WRITES (POST /platform/api/v1/commands/faucet/{cmd}) — NOT sent here:
     dispense, onoff, presetexperience, experience, factoryreset
 
 This script only READS. It confirms the SEN->faucet mapping and captures the
-real state / water-usage / preset shapes we need to model the integration.
-It also tries a few GUESSED date-range parameters for faucet-usage, which
-answers HTTP 400 without parameters, and prints Kohler's full error replies.
+real state / water-usage / preset replies, printing Kohler's full error
+replies when a read fails. See PROTOCOL.md for what they contain.
 """
 
 from __future__ import annotations
@@ -36,12 +37,12 @@ DEFAULT_API_RESOURCE = "f5d87f3d-bdeb-4933-ab70-ef56cc343744"
 DEFAULT_APIM_KEY = "429ecb1d0b5e4258aa0a2bfadd82a493"
 
 CUSTOMER_DEVICES = "/devices/api/v1/device-management/customer-device/{cid}"
+CUSTOMER_EXPERIENCE = "/devices/api/v1/device-management/customer-experience/{cid}"
 FAUCET_READS = {
     "faucet_state": "/devices/api/v1/device-management/faucet-state/{did}",
-    "faucet_usage": "/devices/api/v1/device-management/faucet-usage/{did}",
     "faucet_configuration": "/devices/api/v1/device-management/faucet-configuration/{did}",
-    "faucet_experience": "/devices/api/v1/device-management/faucet-experience/{did}",
 }
+USAGE = "/devices/api/v1/device-management/faucet-usage/{did}"
 
 OUT_DIR = Path(__file__).parent / "captures"
 
@@ -83,42 +84,24 @@ def _error_body(exc: Exception) -> str:
     return json.dumps(raw) if raw is not None else str(exc)[:600]
 
 
-def _usage_param_guesses() -> list[dict[str, str]]:
-    """Common date-range parameter shapes. These are GUESSES, not known values."""
-    now = datetime.now(timezone.utc)
-    week_ago = now - timedelta(days=7)
-    day, iso, epoch = "%Y-%m-%d", "%Y-%m-%dT%H:%M:%SZ", lambda d: str(int(d.timestamp()))
-    return [
-        {"startDate": week_ago.strftime(day), "endDate": now.strftime(day)},
-        {"fromDate": week_ago.strftime(day), "toDate": now.strftime(day)},
-        {"startDate": week_ago.strftime(iso), "endDate": now.strftime(iso)},
-        {"from": week_ago.strftime(iso), "to": now.strftime(iso)},
-        {"startTime": epoch(week_ago), "endTime": epoch(now)},
-        {"period": "week"},
-        {"type": "weekly"},
-        {"days": "7"},
-    ]
-
-
-async def _probe_usage(client: KohlerAnthemClient, did: str) -> None:
-    """Find the parameters faucet-usage wants (it answers 400 without any).
-
-    Read-only GETs. Look first at the bare request's error body: it may name
-    the required parameters outright, making the guesses unnecessary.
-    """
-    ep = FAUCET_READS["faucet_usage"].format(did=did)
-    print(f"\n--- faucet-usage parameter probe for {did[:12]} ---")
-    for params in _usage_param_guesses():
+async def _read_usage(client: KohlerAnthemClient, did: str) -> None:
+    """Read the last 14 days and the last 13 months of usage (liters)."""
+    today = datetime.now(timezone.utc).date()
+    windows = {
+        "DAY": today - timedelta(days=14),
+        "MONTH": (today - timedelta(days=400)).replace(day=1),
+    }
+    for interval, start in windows.items():
+        params = {"FromDate": start.isoformat(), "ToDate": today.isoformat(),
+                  "Interval": interval}
         try:
-            data = await client._request("GET", ep, params=params)
+            data = await client._request("GET", USAGE.format(did=did), params=params)
         except Exception as exc:  # noqa: BLE001
-            print(f"  [miss] {params}\n         {_error_body(exc)[:300]}")
+            print(f"  [miss] usage {interval:5}  {_error_body(exc)[:300]}")
             continue
-        fname = OUT_DIR / f"faucet_usage_{did[:12]}.json"
-        fname.write_text(json.dumps({"params": params, "response": data}, indent=2))
-        print(f"  [HIT ] {params} -> {fname.name}")
-        return
-    print("  No guess worked. The error bodies above are the best lead.")
+        fname = OUT_DIR / f"faucet_usage_{interval.lower()}_{did[:12]}.json"
+        fname.write_text(json.dumps(data, indent=2))
+        print(f"  [HIT ] usage {interval:5}  -> {fname.name}")
 
 
 async def main() -> int:
@@ -166,7 +149,18 @@ async def main() -> int:
             print(f"         top-level keys: {keys}")
 
     for did in faucets:
-        await _probe_usage(client, did)
+        await _read_usage(client, did)
+
+    try:
+        data = await client._request("GET", CUSTOMER_EXPERIENCE.format(cid=tenant))
+    except Exception as exc:  # noqa: BLE001
+        print(f"  [miss] customer_experience  {_error_body(exc)}")
+    else:
+        fname = OUT_DIR / "customer_experience.json"
+        fname.write_text(json.dumps(data, indent=2))
+        presets = data.get("sensateExperiences") if isinstance(data, dict) else None
+        print(f"  [HIT ] customer_experience -> {fname.name} "
+              f"({len(presets or [])} Sensate presets)")
 
     await client.close()
     print("\nDone. Files in recon/captures/ contain no password, but they DO contain "

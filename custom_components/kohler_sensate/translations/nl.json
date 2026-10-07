@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "off": "Uit",
+          "on": "Aan"
+        }
       },
       "progress": {
-        "name": "Doseervoortgang"
+        "name": "Doseervoortgang",
+        "state": {
+          "not_started": "Niet gestart"
+        }
       },
       "handle_state": {
-        "name": "Hendel"
+        "name": "Hendel",
+        "state": {
+          "open": "Open",
+          "closed": "Dicht"
+        }
       },
       "last_dispense": {
         "name": "Laatst gedoseerd"
+      },
+      "water_total": {
+        "name": "Totaal waterverbruik"
+      },
+      "water_today": {
+        "name": "Waterverbruik vandaag"
       }
     },
     "switch": {

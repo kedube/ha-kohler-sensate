@@ -19,48 +19,50 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.kohler_sensate.api import SensatePreset, parse_presets
 from custom_components.kohler_sensate.const import CONFIG_REFRESH_INTERVAL
 
-from .conftest import FakeKohler
+from .conftest import DEVICE_ID, FakeKohler
 
 PASTA = "button.kitchen_preset_pasta_pot"
+# Shaped like real "sensateExperiences" entries; the fake adds the device id.
 PRESETS = [
-    {"experienceId": "p1", "experienceTitle": "Pasta pot", "experienceQuantity": 3.0},
-    {"experienceId": "p2", "experienceTitle": "Kettle", "experienceQuantity": 1.2},
+    {
+        "experienceId": "p1",
+        "title": "Pasta pot",
+        "unit": "Metric",
+        "dispenseAmount": 3.0,
+        "displayQuantity": "3 L",
+        "state": "OFF",
+    },
+    {
+        "experienceId": "p2",
+        "title": "Kettle",
+        "unit": "Standard",
+        "dispenseAmount": 1.2,
+        "displayQuantity": "5 Cups",
+        "state": "OFF",
+    },
 ]
 
 
-async def _setup_with_enabled(
-    hass: HomeAssistant, entry: MockConfigEntry, *entity_ids: str
-) -> None:
-    """Set up, then enable the (disabled by default) preset buttons."""
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-    registry = er.async_get(hass)
-    for entity_id in entity_ids:
-        registry.async_update_entity(entity_id, disabled_by=None)
-    assert await hass.config_entries.async_reload(entry.entry_id)
-    await hass.async_block_till_done()
-
-
 def test_parse_presets() -> None:
-    assert parse_presets(PRESETS) == [
-        SensatePreset("p1", "Pasta pot", 3.0),
-        SensatePreset("p2", "Kettle", 1.2),
-    ]
-    assert parse_presets({"experiences": PRESETS[:1]}) == [
-        SensatePreset("p1", "Pasta pot", 3.0)
-    ]
-    assert parse_presets({"id": 7, "title": "x"}) == []  # not a list
-    assert parse_presets(None) == []
-    assert parse_presets(
-        [
-            {"experienceId": "a", "experienceTitle": "No amount"},
-            {"experienceId": "b", "experienceTitle": "Zero", "experienceQuantity": 0},
-            {"experienceTitle": "No id", "experienceQuantity": 1},
-            {"experienceId": "c", "experienceQuantity": 1},
-            {"id": 9, "name": "Alt keys", "quantity": "0.5"},
+    def entry(device: str, **fields: object) -> dict[str, object]:
+        return {"deviceId": device, "sku": "SEN", **fields}
+
+    payload = {
+        "sensateExperiences": [
+            entry(DEVICE_ID.upper(), **PRESETS[0]),  # ids compare case-blind
+            entry("sen-other", experienceId="x", title="Other", dispenseAmount=1),
+            entry(DEVICE_ID, experienceId="a", title="No amount"),
+            entry(DEVICE_ID, experienceId="b", title="Zero", dispenseAmount=0),
+            entry(DEVICE_ID, experienceId="c", title="Flag", dispenseAmount=True),
+            entry(DEVICE_ID, title="No id", dispenseAmount=1),
+            entry(DEVICE_ID, experienceId="d", dispenseAmount=1),
             "junk",
-        ]
-    ) == [SensatePreset("9", "Alt keys", 0.5)]
+        ],
+        "gcsExperiences": [entry(DEVICE_ID, experienceId="20", title="Cool Down")],
+    }
+    assert parse_presets(payload, DEVICE_ID) == [SensatePreset("p1", "Pasta pot", 3.0)]
+    assert parse_presets({"sensateExperiences": None}, DEVICE_ID) == []
+    assert parse_presets(None, DEVICE_ID) == []
 
 
 async def test_no_presets(
@@ -72,32 +74,26 @@ async def test_no_presets(
     assert not [e for e in entries if "_preset_" in e.unique_id]
 
 
-async def test_preset_buttons_start_disabled(
-    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
-) -> None:
-    kohler.presets = PRESETS
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    entry = er.async_get(hass).async_get(PASTA)
-    assert entry is not None
-    assert entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
-    assert hass.states.get(PASTA) is None
-
-
 async def test_press_preset_dispenses_its_amount(
     hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
 ) -> None:
     kohler.presets = PRESETS
-    await _setup_with_enabled(hass, config_entry, PASTA)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
 
     state = hass.states.get(PASTA)
     assert state.name == "Kitchen Preset: Pasta pot"
     assert state.attributes["amount"] == 3000
     assert state.attributes["unit"] == "mL"
+    # The shower's presets on the same account get no buttons.
+    assert hass.states.get("button.kitchen_preset_cool_down") is None
 
     await hass.services.async_call(
         BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: PASTA}, blocking=True
     )
     assert [b["quantity"] for c, b in kohler.commands if c == "dispense"] == [3.0]
+    dispensing = hass.states.get("binary_sensor.kitchen_dispensing")
+    assert dispensing.state == "on"
+    assert dispensing.attributes["preset"] == "Pasta pot"
 
 
 async def test_presets_follow_the_app(
@@ -107,7 +103,7 @@ async def test_presets_follow_the_app(
     kohler: FakeKohler,
 ) -> None:
     kohler.presets = PRESETS[:1]
-    await _setup_with_enabled(hass, config_entry, PASTA)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
     registry = er.async_get(hass)
     assert registry.async_get("button.kitchen_preset_kettle") is None
 
@@ -117,7 +113,7 @@ async def test_presets_follow_the_app(
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
 
-    assert registry.async_get("button.kitchen_preset_kettle") is not None
+    assert hass.states.get("button.kitchen_preset_kettle") is not None
     assert hass.states.get(PASTA).state == STATE_UNAVAILABLE
 
 
@@ -125,9 +121,9 @@ async def test_preset_outside_dispense_range(
     hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
 ) -> None:
     kohler.presets = [
-        {"experienceId": "p9", "experienceTitle": "Pasta pot", "experienceQuantity": 12}
+        {"experienceId": "p9", "title": "Pasta pot", "dispenseAmount": 12}
     ]
-    await _setup_with_enabled(hass, config_entry, PASTA)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
     with pytest.raises(HomeAssistantError) as err:
         await hass.services.async_call(
             BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: PASTA}, blocking=True

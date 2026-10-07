@@ -40,7 +40,7 @@ async def test_setup_and_unload(
     hass: HomeAssistant, setup_entry: MockConfigEntry
 ) -> None:
     assert setup_entry.state is ConfigEntryState.LOADED
-    assert hass.states.get(STATUS).state == "Off"
+    assert hass.states.get(STATUS).state == "off"
     assert hass.services.has_service(DOMAIN, "dispense")
 
     assert await hass.config_entries.async_unload(setup_entry.entry_id)
@@ -60,7 +60,7 @@ async def test_v01_entry_without_device_id(
     assert await hass.config_entries.async_setup(entry.entry_id)
     assert entry.state is ConfigEntryState.LOADED
     assert CONF_DEVICE_ID not in entry.data
-    assert hass.states.get(STATUS).state == "Off"
+    assert hass.states.get(STATUS).state == "off"
 
 
 async def test_setup_bad_password_starts_reauth(
@@ -102,7 +102,7 @@ async def test_transient_errors_keep_polling(
 
     kohler.state["status"] = "On"
     await _tick(hass, freezer)
-    assert hass.states.get(STATUS).state == "On"
+    assert hass.states.get(STATUS).state == "on"
     assert not _reauth_flows(hass)
 
 
@@ -137,5 +137,5 @@ async def test_config_failure_does_not_block_state(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
 
-    assert hass.states.get(STATUS).state == "Off"
+    assert hass.states.get(STATUS).state == "off"
     assert hass.states.get("binary_sensor.kitchen_leak").state == "unknown"

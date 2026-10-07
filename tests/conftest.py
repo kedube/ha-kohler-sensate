@@ -7,7 +7,7 @@ HTTP level, so the real client in ``api.py`` is exercised end to end.
 from __future__ import annotations
 
 import base64
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 import json
 import re
 import time
@@ -88,8 +88,11 @@ class FakeKohler:
         }
         # None leaves connectionState out of the reply.
         self.connection: str | None = "Connected"
-        # None answers the presets endpoint with 404 (no presets saved).
-        self.presets: Any = None
+        # This faucet's entries in customer-experience's "sensateExperiences".
+        self.presets: list[dict[str, Any]] = []
+        # Liters per period, as faucet-usage reports them.
+        self.usage_months: dict[str, float] = {"2025-04": 1.593, "2026-10": 1.6144}
+        self.usage_days: dict[str, float] = {"2026-10-07": 1.5274}
         self.push_registrations: list[dict[str, Any]] = []
         mocker.post(TOKEN_URL, side_effect=self._token)
         mocker.request("get", re.compile(re.escape(API_BASE)), side_effect=self._api)
@@ -179,8 +182,34 @@ class FakeKohler:
                 body["connectionState"] = self.connection
                 body["lastConnected"] = "2026-10-06T12:00:00Z"
             return self._respond(method, url, (200, body))
-        if "/faucet-experience/" in path and self.presets is not None:
-            return self._respond(method, url, (200, self.presets))
+        if "/customer-experience/" in path:
+            # Presets of every device on the account, a shower's among them.
+            body = {
+                "experiences": [],
+                "sensateExperiences": [
+                    {"deviceId": DEVICE_ID, "sku": "SEN", **p} for p in self.presets
+                ],
+                "gcsExperiences": [
+                    {
+                        "deviceId": "gcs-shower",
+                        "experienceId": "20",
+                        "title": "Cool Down",
+                    }
+                ],
+            }
+            return self._respond(method, url, (200, body))
+        if "/faucet-usage/" in path:
+            interval = url.query.get("Interval")
+            usage = {"MONTH": self.usage_months, "DAY": self.usage_days}.get(interval)
+            if usage is None or not url.query.get("FromDate"):
+                return self._respond(method, url, (400, {"message": "Bad Request"}))
+            rows = [
+                {"intervalKey": key, "quantity": liters, "waterUsage": liters}
+                for key, liters in usage.items()
+            ]
+            return self._respond(
+                method, url, (200, {"faucetUsageDataDetailsList": rows})
+            )
         if "/faucet-configuration/" in path:
             return self._respond(method, url, (200, self.config))
         return self._respond(method, url, (404, {"message": "not found"}))
@@ -281,6 +310,33 @@ class FakeMqttClient:
         self.on_disconnect(self, None, None, Reason(True), None)
 
 
+def feed_message(code: str, **attributes: Any) -> dict[str, Any]:
+    """A feed message shaped like those a real Sensate sends."""
+    return {
+        "sysid": "SEN-TEST",
+        "deviceid": DEVICE_ID,
+        "tenantid": TENANT_ID,
+        "sku": "SEN",
+        "type": "STS",
+        "timestamp": "1791397638",
+        "data": {
+            "type": "Status",
+            "code": code,
+            "attributes": [{"code": code, **attributes}],
+        },
+    }
+
+
+def water_message(status: str, handle: str = "OPEN") -> dict[str, Any]:
+    return feed_message("SENSATE_STS", status=status, handle=handle)
+
+
+def preset_message(name: str, status: str) -> dict[str, Any]:
+    return feed_message(
+        "SENSATE_EXP_STS", name=name, experienceid="exp-1", status=status
+    )
+
+
 @pytest.fixture(autouse=True)
 def fake_mqtt() -> Generator[type[FakeMqttClient]]:
     """Instant updates are on by default; never open a real connection."""
@@ -326,4 +382,33 @@ async def setup_entry(
 ) -> MockConfigEntry:
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
+    return config_entry
+
+
+async def wait_for(
+    hass: HomeAssistant, condition: Callable[[], bool], what: str
+) -> None:
+    """Wait for the push loop, a never-ending background task, to reach a state.
+
+    Its teardown runs on a worker thread, so allow real time, not just
+    event-loop turns: on a slow CI runner a fixed number of turns isn't enough.
+    """
+    for _ in range(200):
+        await hass.async_block_till_done()
+        if condition():
+            return
+        await hass.async_add_executor_job(time.sleep, 0.01)
+    pytest.fail(f"timed out waiting for {what}")
+
+
+@pytest.fixture
+async def push_entry(
+    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
+) -> MockConfigEntry:
+    hass.config_entries.async_update_entry(
+        config_entry, options={**config_entry.options, CONF_PUSH_UPDATES: True}
+    )
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    push = config_entry.runtime_data.push
+    await wait_for(hass, lambda: push.connected, "the first connection")
     return config_entry

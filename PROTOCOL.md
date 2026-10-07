@@ -25,27 +25,30 @@ confirmed against the live account. Base URL: `https://api-kohler-us.kohler.io`.
 |---|---|
 | All devices | `/devices/api/v1/device-management/customer-device/{tenantId}` |
 | Faucet state | `/devices/api/v1/device-management/faucet-state/{deviceId}` |
-| Water usage | `/devices/api/v1/device-management/faucet-usage/{deviceId}` |
+| Water usage | `/devices/api/v1/device-management/faucet-usage/{deviceId}?FromDate=…&ToDate=…&Interval=…` |
 | Configuration | `/devices/api/v1/device-management/faucet-configuration/{deviceId}` |
-| Presets/experiences | `/devices/api/v1/device-management/faucet-experience/{deviceId}` |
+| Presets, every device | `/devices/api/v1/device-management/customer-experience/{tenantId}` |
 
-`faucet-state` → `state` object (VERIFIED live):
-- `status` — e.g. `"Off"` (idle). Also `"On"` / dispensing states.
-- `progress` — e.g. `"NotStarted"` (dispense progress: NotStarted / …InProgress / …).
-- `handleState` — e.g. `"OPEN"` (physical manual-handle position).
-- `quantity` — double or `null` when no dispense active.
-Envelope also carries `connectionState` ("Connected"), `lastConnected`, `sku`.
+An unknown route answers `{ "statusCode": 404, "message": "Resource not
+found" }` from the API gateway; a known route with an unknown device answers
+`{"detail":null,"error":null,"statusCode":404,"message":"Not Found"}`.
+`faucet-experience` is an unknown route.
+
+`faucet-state` → `state` object (VERIFIED live, firmware 16.0, polled every
+second through dispenses, an app preset and use by hand):
+- `status` — `"On"` while water runs, however it was started (dispense,
+  preset, hand), else `"Off"`. Follows the faucet within about a second.
+- `progress` — always `"NotStarted"`, even mid-dispense and mid-preset.
+- `handleState` — `"OPEN"` or `"CLOSED"` (manual-handle position).
+- `quantity` — always `null`, even mid-dispense.
+Envelope also carries `connectionState` ("Connected"), `lastConnected`, `sku`,
+and an `updatedTimestamp` that doesn't change with the state.
 
 `faucet-configuration` (VERIFIED): `configuration.about` (name "SENSATE", model
 "SEN", serial, firmware 16.0, hardware "CC3235SF") + **`leakDetectionHistory`**
 (array; empty = no leaks) → this is the leak-alert source.
 
-Real-time updates also arrive over **MQTT** (`faucet/preset/PresetMqttData`);
-after a dispense the app waits on MQTT for progress/completion.
-
-`faucet-usage` returned HTTP 400 without extra params (needs a date range or
-similar — TBD). `faucet-experience` returned 404 (likely no presets saved yet,
-or the path needs a suffix — TBD).
+Real-time updates arrive over **MQTT**; see Instant updates below.
 
 ## Writes (POST `/platform/api/v1/commands/faucet/{cmd}`, ROPC token OK)
 
@@ -78,20 +81,42 @@ experienceTitle, sku, status, tenantId }`.
 `lastConnected`. The integration treats any other `connectionState` as
 offline, and a missing one as online.
 
-## Presets (`faucet-experience`)
-`GET /devices/api/v1/device-management/faucet-experience/{deviceId}` answered
-404 on an account with no presets. The response shape with presets is
-unknown. The integration accepts a list (or a dict holding one under
-`experiences`, `faucetExperiences`, `presets` or `data`) of items with
-`experienceId`/`id`, `experienceTitle`/`title`/`name` and
-`experienceQuantity`/`quantity` in liters, the field names of the app's
-`FaucetExperienceRequest` model. It dispenses a preset with the verified
-`dispense` command rather than the untested `presetexperience` command.
+## Presets (`customer-experience`)
+`GET /devices/api/v1/device-management/customer-experience/{tenantId}` (VERIFIED)
+lists the presets of every device on the account, in several shapes. The
+Sensate's details are in `sensateExperiences`:
+
+```json
+{ "deviceId": "sen-…", "sku": "SEN", "experienceId": "<uuid>",
+  "title": "A Glass of Water", "unit": "Metric", "dispenseAmount": 0.236588,
+  "displayQuantity": "1 Cups", "lastUsedTime": 1791397632, "state": "OFF",
+  "progress": null, "createdTime": 1744504652 }
+```
+
+`dispenseAmount` is in liters. `experiences` repeats id and title only, and
+`faucetPresetsExperiences` / `recentlyUsedPresetsExperiences` add the
+device's name but no amount. The integration dispenses a preset with the
+verified `dispense` command rather than the untested `presetexperience`.
 
 ## Water usage (`faucet-usage`)
-Answers HTTP 400 without parameters. `recon/faucet_probe.py` prints the full
-error body (which may name the required parameters) and tries common
-date-range parameter shapes.
+`GET …/faucet-usage/{deviceId}?FromDate=2026-10-01&ToDate=2026-10-07&Interval=DAY`
+(VERIFIED). The parameter names are PascalCase, unlike the rest of the API; a
+wrong case answers the same generic 400 as no parameters. `Interval` is `DAY`
+or `MONTH`; `WEEK` and `YEAR` answer 400. Dates are `YYYY-MM-DD`; there's no
+range limit (2020 to now in months works).
+
+```json
+{ "deviceId": "sen-…", "interval": "Day",
+  "faucetUsageDataDetailsList": [
+    { "intervalKey": "2026-10-07", "quantity": 1.5274, "waterUsage": 1.5274,
+      "hotWaterUsage": 0, "coldWaterUsage": 1.5274, "usageDuration": 11,
+      "temperature": 17.24 } ],
+  "maxWaterUsage": 1.5274, "avgWaterUsage": 0.1076, … }
+```
+
+Volumes are liters (a day's buckets sum exactly to that month's). Month keys
+look like `2026-10`. `usageDuration` is seconds but has implausible outliers
+(535428 in one month), so the integration ignores it.
 
 ## Instant updates (Azure IoT Hub)
 Confirmed for Anthem showers by kohler-anthem and kohler-anthem-plus, and for
@@ -106,10 +131,30 @@ when it changes.
    `mobileDeviceId`; each call returns fresh credentials.
 2. MQTT 3.1.1 over TLS to `ioTHub:8883`, client id `deviceId`.
 3. Subscribe to `$iothub/methods/POST/#`. Events arrive there as direct
-   methods for every device on the account (top-level `sku` and `deviceid`),
-   and must be acknowledged on `$iothub/methods/res/200/?$rid=<rid>`.
+   methods (`…/POST/ExecuteControlCommand/?$rid=N`) for every device on the
+   account (top-level `sku` and `deviceid`), and must be acknowledged on
+   `$iothub/methods/res/200/?$rid=<rid>`.
 4. Nothing is replayed on connect, so re-read the state after connecting.
    On disconnect, register again for fresh credentials.
+
+Sensate messages seen live (envelope trimmed):
+
+```json
+{"deviceid": "sen-…", "sku": "SEN", "type": "STS", "timestamp": "1791397638",
+ "data": {"type": "Status", "code": "SENSATE_STS",
+          "attributes": [{"code": "SENSATE_STS", "status": "On", "handle": "OPEN"}]}}
+
+{"deviceid": "sen-…", "sku": "SEN", "type": "STS",
+ "data": {"type": "Status", "code": "SENSATE_EXP_STS",
+          "attributes": [{"code": "SENSATE_EXP_STS", "name": "A Glass of Water",
+                          "experienceid": "<uuid>", "status": "ON"}]}}
+```
+
+`SENSATE_STS` comes with every water on/off: dispenses, presets and use by
+hand. `SENSATE_EXP_STS` comes when a preset run from the app starts (`ON`) and
+ends (`OFF`). A dispense from the API sends only `SENSATE_STS`, and no
+message carries the dispensed amount. Opening the app's presets sends
+nothing.
 
 ## Throttling
 429 and 503 replies may carry `Retry-After` (seconds or an HTTP date). The
@@ -129,11 +174,10 @@ integration waits that long, clamped to 30 s–15 min.
 - Payloads are exact (Gson `@SerializedName` from the APK models).
 - Verified live: the HTTP 200 from `dispense` is enough to run the water and
   stop at the requested amount; no MQTT listener is needed.
-- Seen live (firmware 16.0): `status` `On`/`Off`, `progress` `NotStarted`,
-  `handleState` `OPEN`, `connectionState` `Connected`. The configuration
-  reply repeats the device id under `id`, and `about.firmware` is an object
-  (`{"version": "16.0", "latestVersion": …}`).
-- Still unknown: whether `dispense` ever needs a prior `onoff:ON`, the
-  `progress` values during and after a dispense, other `handleState` and
+- Seen live (firmware 16.0): `status` `On`/`Off`, `progress` only
+  `NotStarted`, `handleState` `OPEN`/`CLOSED`, `connectionState` `Connected`.
+  The configuration reply repeats the device id under `id`, and
+  `about.firmware` is an object (`{"version": "16.0", "latestVersion": …}`).
+- Still unknown: whether `dispense` ever needs a prior `onoff:ON`, other
   `connectionState` values, and the shape of `leakDetectionHistory` entries. The integration treats each entry as a leak event the user clears
   in Home Assistant, keyed by its `id` if it has one, else by its content.

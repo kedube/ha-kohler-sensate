@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Estado"
+        "name": "Estado",
+        "state": {
+          "off": "Apagado",
+          "on": "Encendido"
+        }
       },
       "progress": {
-        "name": "Progreso del dispensado"
+        "name": "Progreso del dispensado",
+        "state": {
+          "not_started": "Sin iniciar"
+        }
       },
       "handle_state": {
-        "name": "Manija"
+        "name": "Manija",
+        "state": {
+          "open": "Abierta",
+          "closed": "Cerrada"
+        }
       },
       "last_dispense": {
         "name": "Último dispensado"
+      },
+      "water_total": {
+        "name": "Consumo total de agua"
+      },
+      "water_today": {
+        "name": "Consumo de agua hoy"
       }
     },
     "switch": {

@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import timedelta
 import logging
-import time
 
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
@@ -28,36 +26,7 @@ from custom_components.kohler_sensate.const import (
     UNIT_SYSTEM_METRIC,
 )
 
-from .conftest import DEVICE_ID, TENANT_ID, FakeKohler, FakeMqttClient
-
-
-async def _wait_for(
-    hass: HomeAssistant, condition: Callable[[], bool], what: str
-) -> None:
-    """Wait for the push loop, a never-ending background task, to reach a state.
-
-    Its teardown runs on a worker thread, so allow real time, not just
-    event-loop turns: on a slow CI runner a fixed number of turns isn't enough.
-    """
-    for _ in range(200):
-        await hass.async_block_till_done()
-        if condition():
-            return
-        await hass.async_add_executor_job(time.sleep, 0.01)
-    pytest.fail(f"timed out waiting for {what}")
-
-
-@pytest.fixture
-async def push_entry(
-    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
-) -> MockConfigEntry:
-    hass.config_entries.async_update_entry(
-        config_entry, options={**config_entry.options, CONF_PUSH_UPDATES: True}
-    )
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    push = config_entry.runtime_data.push
-    await _wait_for(hass, lambda: push.connected, "the first connection")
-    return config_entry
+from .conftest import DEVICE_ID, TENANT_ID, FakeKohler, FakeMqttClient, wait_for
 
 
 async def _advance(
@@ -89,7 +58,7 @@ async def test_on_by_default(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     push = config_entry.runtime_data.push
     assert push is not None
-    await _wait_for(hass, lambda: push.connected, "the connection")
+    await wait_for(hass, lambda: push.connected, "the connection")
     assert len(kohler.push_registrations) == 1
 
 
@@ -114,7 +83,7 @@ async def test_connects_with_registered_credentials(
     )
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     push = config_entry.runtime_data.push
-    await _wait_for(hass, lambda: push.connected, "the connection")
+    await wait_for(hass, lambda: push.connected, "the connection")
 
     (registration,) = kohler.push_registrations
     assert registration["tenantId"] == TENANT_ID
@@ -182,12 +151,12 @@ async def test_reconnects_with_fresh_credentials_and_same_identity(
     first = FakeMqttClient.instances[0]
     first.drop()
     # Move the clock only once the reconnect is scheduled, or it never fires.
-    await _wait_for(hass, lambda: push.next_retry_at is not None, "a reconnect")
+    await wait_for(hass, lambda: push.next_retry_at is not None, "a reconnect")
     assert first.stopped
     assert not push.connected
 
     await _advance(hass, freezer, timedelta(seconds=11))
-    await _wait_for(hass, lambda: push.connected, "the reconnection")
+    await wait_for(hass, lambda: push.connected, "the reconnection")
     assert len(FakeMqttClient.instances) == 2
     assert FakeMqttClient.instances[1].password == "SharedAccessSignature sig-2"
     ids = {r["mobileDeviceId"] for r in kohler.push_registrations}
@@ -216,15 +185,15 @@ async def test_refused_connection_retries_with_backoff(
     )
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     push = config_entry.runtime_data.push
-    await _wait_for(hass, lambda: push.next_retry_at is not None, "a retry")
+    await wait_for(hass, lambda: push.next_retry_at is not None, "a retry")
     assert not push.connected
     assert "refused" in push.last_error
 
     FakeMqttClient.refuse = False
     await _advance(hass, freezer, timedelta(seconds=11))
-    await _wait_for(hass, lambda: push.connected, "the retry to connect")
+    await wait_for(hass, lambda: push.connected, "the retry to connect")
     # Polling kept working throughout.
-    assert hass.states.get("sensor.kitchen_status").state == "Off"
+    assert hass.states.get("sensor.kitchen_status").state == "off"
 
 
 async def test_registration_failure_keeps_polling(
@@ -236,11 +205,11 @@ async def test_registration_failure_keeps_polling(
     )
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     push = config_entry.runtime_data.push
-    await _wait_for(hass, lambda: push.next_retry_at is not None, "a retry")
+    await wait_for(hass, lambda: push.next_retry_at is not None, "a retry")
 
     assert FakeMqttClient.instances == []
     assert "HTTP 500" in push.last_error
-    assert hass.states.get("sensor.kitchen_status").state == "Off"
+    assert hass.states.get("sensor.kitchen_status").state == "off"
 
 
 async def test_unload_stops_the_connection(
@@ -339,7 +308,7 @@ async def test_dropped_feed_falls_back_and_catches_up(
 
     polls = kohler.state_polls
     FakeMqttClient.instances[0].drop()
-    await _wait_for(hass, lambda: push.next_retry_at is not None, "a reconnect")
+    await wait_for(hass, lambda: push.next_retry_at is not None, "a reconnect")
     await _advance(hass, freezer, timedelta(seconds=1))  # refresh cooldown
     # Re-read at once, and poll as usual until the feed is back.
     assert kohler.state_polls == polls + 1
@@ -348,7 +317,7 @@ async def test_dropped_feed_falls_back_and_catches_up(
     # A change while the feed was down isn't one it missed.
     kohler.state["status"] = "On"
     await _advance(hass, freezer, timedelta(seconds=10))
-    await _wait_for(hass, lambda: push.connected, "the reconnection")
+    await wait_for(hass, lambda: push.connected, "the reconnection")
     await _advance(hass, freezer, timedelta(seconds=1))
     assert hass.states.get("switch.kitchen_water").state == "on"
     await _advance(hass, freezer, PUSH_GRACE)

@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Stato"
+        "name": "Stato",
+        "state": {
+          "off": "Spento",
+          "on": "Acceso"
+        }
       },
       "progress": {
-        "name": "Avanzamento erogazione"
+        "name": "Avanzamento erogazione",
+        "state": {
+          "not_started": "Non avviato"
+        }
       },
       "handle_state": {
-        "name": "Leva"
+        "name": "Leva",
+        "state": {
+          "open": "Aperta",
+          "closed": "Chiusa"
+        }
       },
       "last_dispense": {
         "name": "Ultima erogazione"
+      },
+      "water_total": {
+        "name": "Consumo d'acqua totale"
+      },
+      "water_today": {
+        "name": "Consumo d'acqua oggi"
       }
     },
     "switch": {

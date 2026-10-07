@@ -68,7 +68,12 @@ class SensateLeakSensor(SensateEntity, BinarySensorEntity):
 
 
 class SensateDispensingSensor(SensateEntity, BinarySensorEntity):
-    """On while the faucet is actively dispensing."""
+    """On while a measured amount is being dispensed.
+
+    Covers dispenses started from Home Assistant and presets run from the
+    Konnect app (the latter only with instant updates). Kohler doesn't report
+    other dispenses, such as by voice, apart from the water turning on.
+    """
 
     _attr_translation_key = "dispensing"
     _attr_device_class = BinarySensorDeviceClass.RUNNING
@@ -79,6 +84,11 @@ class SensateDispensingSensor(SensateEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         return self.coordinator.is_dispensing()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        preset = self.coordinator.dispensing_preset
+        return {"preset": preset} if preset else {}
 
 
 class SensateConnectedSensor(SensateEntity, BinarySensorEntity):

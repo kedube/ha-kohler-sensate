@@ -88,7 +88,7 @@ async def test_offline_faucet(
 
     kohler.connection = "Connected"
     await _advance(hass, freezer, SCAN_INTERVAL_IDLE)
-    assert hass.states.get(STATUS).state == "Off"
+    assert hass.states.get(STATUS).state == "off"
 
 
 async def test_connection_state_not_reported(
@@ -97,7 +97,7 @@ async def test_connection_state_not_reported(
     kohler.connection = None
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     assert hass.states.get("binary_sensor.kitchen_connected").state == STATE_UNKNOWN
-    assert hass.states.get(STATUS).state == "Off"  # assume online
+    assert hass.states.get(STATUS).state == "off"  # assume online
 
 
 # --- unknown statuses --------------------------------------------------------------

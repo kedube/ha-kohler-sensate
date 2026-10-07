@@ -19,6 +19,7 @@ from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import (
     SensateApi,
@@ -33,6 +34,8 @@ from .const import (
     CONF_MAX_RUN_MINUTES,
     CONFIG_REFRESH_INTERVAL,
     DEFAULT_MAX_RUN_MINUTES,
+    DISPENSE_MAX,
+    DISPENSE_SETTLE,
     DOMAIN,
     ISSUE_API_CHANGED,
     ISSUE_FAUCET_NOT_FOUND,
@@ -47,12 +50,15 @@ from .const import (
     SCAN_INTERVAL_PUSH_ACTIVE,
     STORAGE_KEY,
     STORAGE_VERSION,
+    USAGE_HISTORY_START,
+    USAGE_REFRESH_INTERVAL,
+    USAGE_SETTLE,
 )
 from .units import UnitProfile, get_profile, to_ml
 
 if TYPE_CHECKING:
     from . import SensateConfigEntry
-    from .push import SensatePush
+    from .push import FaucetEvent, SensatePush
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,7 +87,9 @@ def leak_fingerprint(event: Any) -> str:
 
 def _dispensing(state: dict[str, Any]) -> bool:
     progress = state.get("progress")
-    # Kohler's in-progress values end in "InProgress"; others are idle.
+    # The Sensate leaves this at "NotStarted", even mid-dispense, so dispenses
+    # are tracked from commands and the feed instead. Kept for any firmware
+    # that does report "…InProgress".
     return isinstance(progress, str) and progress.lower().endswith("inprogress")
 
 
@@ -148,6 +156,22 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.profile.number_default, self.profile.number_unit
         )
         self.last_dispense_liters: float | None = None
+        # Dispenses: one Home Assistant started (until the faucet reports the
+        # water off) and a preset run from the app (until the feed says so).
+        self._dispense_started: float | None = None
+        self._dispense_seen_on = False
+        self._dispense_feed_on = False
+        self._dispense_preset: str | None = None
+        self._preset_since: float | None = None
+        self._app_preset: str | None = None
+        self._water_was_running: bool | None = None
+        # Ends a dispense whose end never arrives, at DISPENSE_MAX.
+        self._dispense_timer: CALLBACK_TYPE | None = None
+        # Water usage in liters: everything Kohler has counted, and today.
+        self.usage_total_liters: float | None = None
+        self.usage_today_liters: float | None = None
+        self._usage_fetched_at: float | None = None
+        self._usage_due_at: float | None = None
         # Optional instant updates; set up by __init__.py when enabled.
         self.push: SensatePush | None = None
         self.push_verified = False
@@ -191,9 +215,10 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._auto_off_timer is not None:
             self._auto_off_timer()
             self._auto_off_timer = None
-        if self._push_check is not None:
-            self._push_check()
-            self._push_check = None
+        for cancel in (self._push_check, self._dispense_timer):
+            if cancel is not None:
+                cancel()
+        self._push_check = self._dispense_timer = None
         await super().async_shutdown()
 
     # --- polling --------------------------------------------------------------
@@ -239,7 +264,9 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.connection_state = snapshot.connection_state
         self.last_connected = snapshot.last_connected
         self._record_values(state)
+        self._note_water(_water_running(state), from_feed=False)
         await self._async_refresh_config()
+        await self._async_refresh_usage()
 
         _LOGGER.debug("Faucet state: %s (%s)", state, self.connection_state)
         quantity = state.get("quantity")
@@ -300,6 +327,92 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._config_fetched_at = now
         self._config_due = False
 
+    async def _async_refresh_usage(self) -> None:
+        """Refresh water usage now and then, and soon after the water stops."""
+        now = time.monotonic()
+        if not (
+            self._usage_fetched_at is None
+            or now - self._usage_fetched_at >= USAGE_REFRESH_INTERVAL.total_seconds()
+            or (self._usage_due_at is not None and now >= self._usage_due_at)
+        ):
+            return
+        # A failure waits for the next interval rather than retrying each poll.
+        self._usage_fetched_at = now
+        self._usage_due_at = None
+        today = dt_util.now().date()
+        try:
+            months = await self.api.async_get_usage(
+                self.device_id, USAGE_HISTORY_START, today, "MONTH"
+            )
+            days = await self.api.async_get_usage(self.device_id, today, today, "DAY")
+        except SensateAuthError as err:
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN, translation_key="auth_failed"
+            ) from err
+        except SensateError as err:
+            _LOGGER.debug("Could not refresh water usage: %s", err)
+            return
+        self.usage_total_liters = round(sum(months.values()), 4)
+        self.usage_today_liters = round(sum(days.values()), 4)
+
+    # --- dispenses ------------------------------------------------------------
+
+    def _note_water(self, running: bool | None, *, from_feed: bool) -> None:
+        """Follow dispenses and usage from the water turning on and off."""
+        if running is None:
+            return
+        now = time.monotonic()
+        if running:
+            if self._dispense_started is not None:
+                self._dispense_seen_on = True
+                self._dispense_feed_on |= from_feed
+        else:
+            if self._water_was_running:
+                # Kohler counts the water used shortly after it stops.
+                self._usage_due_at = now + USAGE_SETTLE.total_seconds()
+            # Polls can lag the feed, so only the feed ends an app preset.
+            if from_feed:
+                self._preset_since = None
+                self._app_preset = None
+            # Ended, once the water was seen running or had time to start;
+            # after the feed saw it running, only the feed can say it stopped.
+            if (
+                self._dispense_started is not None
+                and (
+                    self._dispense_seen_on
+                    or now - self._dispense_started >= DISPENSE_SETTLE.total_seconds()
+                )
+                and (from_feed or not self._dispense_feed_on)
+            ):
+                self._dispense_started = None
+                self._dispense_preset = None
+        self._water_was_running = running
+
+    def _start_dispense_timer(self) -> None:
+        if self._dispense_timer is not None:
+            self._dispense_timer()
+        self._dispense_timer = async_call_later(
+            self.hass, DISPENSE_MAX, self._async_dispense_timeout
+        )
+
+    @callback
+    def _async_dispense_timeout(self, _now: datetime) -> None:
+        self._dispense_timer = None
+        self.async_update_listeners()
+
+    @callback
+    def _note_event(self, event: FaucetEvent) -> None:
+        if event.preset_on is not None:
+            self._preset_since = time.monotonic() if event.preset_on else None
+            self._app_preset = event.preset if event.preset_on else None
+            if event.preset_on:
+                self._start_dispense_timer()
+        if event.status is not None:
+            status = event.status.lower()
+            if status in STATUS_ON or status in STATUS_OFF:
+                self._note_water(status in STATUS_ON, from_feed=True)
+        self.async_update_listeners()
+
     # --- repairs --------------------------------------------------------------
 
     def _issue_id(self, issue: str) -> str:
@@ -347,12 +460,16 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     # --- commands -------------------------------------------------------------
 
-    async def async_dispense(self, liters: float) -> None:
-        """Dispense ``liters`` and refresh the state."""
+    async def async_dispense(self, liters: float, preset: str | None = None) -> None:
+        """Dispense ``liters`` (for ``preset``, if any) and refresh the state."""
         await self._async_command(
             lambda: self.api.async_dispense(self.device_id, liters)
         )
         self.last_dispense_liters = liters
+        self._dispense_started = time.monotonic()
+        self._dispense_seen_on = self._dispense_feed_on = False
+        self._dispense_preset = preset
+        self._start_dispense_timer()
         self.async_update_listeners()
         await self.async_request_refresh()
 
@@ -456,7 +573,9 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self._push_identity
 
     @callback
-    def async_push_activity(self, about_faucet: bool) -> None:
+    def async_push_activity(
+        self, about_faucet: bool, event: FaucetEvent | None = None
+    ) -> None:
         """Instant updates saw a change, connected or dropped: re-read the faucet."""
         # In every case, the refresh below catches up on everything until now.
         self._push_synced_at = time.monotonic()
@@ -464,6 +583,8 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # Proof the feed delivers for this faucet; polling can relax.
             self.push_verified = True
             self._config_due = True  # it may be a leak alert
+        if event is not None:
+            self._note_event(event)
         self.config_entry.async_create_task(
             self.hass, self.async_request_refresh(), "kohler_sensate push refresh"
         )
@@ -539,4 +660,20 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return _water_running(self.data or {})
 
     def is_dispensing(self) -> bool:
-        return _dispensing(self.data or {})
+        now = time.monotonic()
+        limit = DISPENSE_MAX.total_seconds()
+        return (
+            _dispensing(self.data or {})
+            or (
+                self._dispense_started is not None
+                and now - self._dispense_started < limit
+            )
+            or (self._preset_since is not None and now - self._preset_since < limit)
+        )
+
+    @property
+    def dispensing_preset(self) -> str | None:
+        """The preset being dispensed, from the app or Home Assistant."""
+        if not self.is_dispensing():
+            return None
+        return self._app_preset or self._dispense_preset

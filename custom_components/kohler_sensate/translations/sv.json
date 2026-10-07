@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "off": "Av",
+          "on": "På"
+        }
       },
       "progress": {
-        "name": "Tappningsförlopp"
+        "name": "Tappningsförlopp",
+        "state": {
+          "not_started": "Inte startad"
+        }
       },
       "handle_state": {
-        "name": "Handtag"
+        "name": "Handtag",
+        "state": {
+          "open": "Öppet",
+          "closed": "Stängt"
+        }
       },
       "last_dispense": {
         "name": "Senast tappat"
+      },
+      "water_total": {
+        "name": "Total vattenförbrukning"
+      },
+      "water_today": {
+        "name": "Vattenförbrukning i dag"
       }
     },
     "switch": {

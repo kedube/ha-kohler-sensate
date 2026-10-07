@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "État"
+        "name": "État",
+        "state": {
+          "off": "Arrêt",
+          "on": "Marche"
+        }
       },
       "progress": {
-        "name": "Progression de la distribution"
+        "name": "Progression de la distribution",
+        "state": {
+          "not_started": "Non démarré"
+        }
       },
       "handle_state": {
-        "name": "Manette"
+        "name": "Manette",
+        "state": {
+          "open": "Ouverte",
+          "closed": "Fermée"
+        }
       },
       "last_dispense": {
         "name": "Dernière distribution"
+      },
+      "water_total": {
+        "name": "Consommation d'eau totale"
+      },
+      "water_today": {
+        "name": "Consommation d'eau aujourd'hui"
       }
     },
     "switch": {

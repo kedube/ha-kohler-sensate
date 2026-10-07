@@ -92,6 +92,11 @@ def _diagnostics(entry: SensateConfigEntry) -> dict[str, Any]:
             {"title": p.title, "liters": p.liters} for p in coordinator.presets.values()
         ],
         "water_safety_limit_minutes": coordinator.max_run_minutes,
+        "water_usage_liters": {
+            "total": coordinator.usage_total_liters,
+            "today": coordinator.usage_today_liters,
+        },
+        "dispensing": coordinator.is_dispensing(),
         "instant_updates": None
         if (push := coordinator.push) is None
         else {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Final
 
 DOMAIN: Final = "kohler_sensate"
@@ -22,6 +22,15 @@ SCAN_INTERVAL_PUSH_ACTIVE: Final = timedelta(seconds=30)
 PUSH_GRACE: Final = timedelta(seconds=15)
 # Refresh the configuration (firmware, leak history, presets) less often.
 CONFIG_REFRESH_INTERVAL: Final = timedelta(minutes=5)
+# Water usage: re-read this often, and this long after the water stops, once
+# Kohler has counted it. The total covers every month since this date.
+USAGE_REFRESH_INTERVAL: Final = timedelta(minutes=30)
+USAGE_SETTLE: Final = timedelta(minutes=2)
+USAGE_HISTORY_START: Final = date(2019, 1, 1)
+# A dispense from Home Assistant counts as running until the faucet reports
+# the water off, once it has reported it on or this long after the command.
+DISPENSE_SETTLE: Final = timedelta(seconds=3)
+DISPENSE_MAX: Final = timedelta(minutes=2)
 # Bounds for honoring Kohler's Retry-After when it throttles us.
 RETRY_AFTER_MIN: Final = timedelta(seconds=30)
 RETRY_AFTER_MAX: Final = timedelta(minutes=15)
@@ -61,8 +70,10 @@ API_FAUCET_STATE: Final = "/devices/api/v1/device-management/faucet-state/{devic
 API_FAUCET_CONFIG: Final = (
     "/devices/api/v1/device-management/faucet-configuration/{device_id}"
 )
-API_FAUCET_PRESETS: Final = (
-    "/devices/api/v1/device-management/faucet-experience/{device_id}"
+API_FAUCET_USAGE: Final = "/devices/api/v1/device-management/faucet-usage/{device_id}"
+# Every preset ("experience") on the account, for all of its devices.
+API_CUSTOMER_EXPERIENCE: Final = (
+    "/devices/api/v1/device-management/customer-experience/{tenant_id}"
 )
 # Registers a "mobile device" and returns Azure IoT Hub credentials.
 API_MOBILE_SETTINGS: Final = "/platform/api/v1/mobile/settings"

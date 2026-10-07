@@ -102,12 +102,10 @@ class SensatePresetButton(SensateEntity, ButtonEntity):
     """Dispense a preset saved in the Konnect app.
 
     Uses the verified dispense command with the preset's amount, not Kohler's
-    untested preset command. Kohler's preset format isn't documented, so these
-    start disabled: check the amount attribute against the app, then enable.
+    untested preset command.
     """
 
     _attr_translation_key = "preset"
-    _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator: SensateCoordinator, preset: SensatePreset) -> None:
         super().__init__(coordinator, f"preset_{preset.preset_id}")
@@ -141,4 +139,4 @@ class SensatePresetButton(SensateEntity, ButtonEntity):
                 translation_key="preset_out_of_range",
                 translation_placeholders={"title": preset.title},
             )
-        await self.coordinator.async_dispense(preset.liters)
+        await self.coordinator.async_dispense(preset.liters, preset.title)

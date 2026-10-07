@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "off": "Aus",
+          "on": "An"
+        }
       },
       "progress": {
-        "name": "Dosierfortschritt"
+        "name": "Dosierfortschritt",
+        "state": {
+          "not_started": "Nicht gestartet"
+        }
       },
       "handle_state": {
-        "name": "Hebel"
+        "name": "Hebel",
+        "state": {
+          "open": "Offen",
+          "closed": "Geschlossen"
+        }
       },
       "last_dispense": {
         "name": "Zuletzt dosiert"
+      },
+      "water_total": {
+        "name": "Wasserverbrauch gesamt"
+      },
+      "water_today": {
+        "name": "Wasserverbrauch heute"
       }
     },
     "switch": {

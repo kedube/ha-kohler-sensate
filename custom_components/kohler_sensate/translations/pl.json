@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "off": "Wyłączony",
+          "on": "Włączony"
+        }
       },
       "progress": {
-        "name": "Postęp nalewania"
+        "name": "Postęp nalewania",
+        "state": {
+          "not_started": "Nie rozpoczęto"
+        }
       },
       "handle_state": {
-        "name": "Dźwignia"
+        "name": "Dźwignia",
+        "state": {
+          "open": "Otwarta",
+          "closed": "Zamknięta"
+        }
       },
       "last_dispense": {
         "name": "Ostatnio nalano"
+      },
+      "water_total": {
+        "name": "Całkowite zużycie wody"
+      },
+      "water_today": {
+        "name": "Zużycie wody dzisiaj"
       }
     },
     "switch": {

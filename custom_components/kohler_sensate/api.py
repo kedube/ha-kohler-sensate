@@ -24,6 +24,7 @@ import asyncio
 import base64
 import binascii
 from dataclasses import dataclass
+from datetime import date
 from email.utils import parsedate_to_datetime
 import json
 import logging
@@ -35,9 +36,10 @@ import aiohttp
 from .const import (
     API_BASE,
     API_CUSTOMER_DEVICES,
+    API_CUSTOMER_EXPERIENCE,
     API_FAUCET_CONFIG,
-    API_FAUCET_PRESETS,
     API_FAUCET_STATE,
+    API_FAUCET_USAGE,
     API_MOBILE_SETTINGS,
     APIM_KEY,
     AUTH_SCOPE,
@@ -212,41 +214,54 @@ def _retry_after(response: aiohttp.ClientResponse) -> float | None:
         return None
 
 
-def parse_presets(payload: Any) -> list[SensatePreset]:
-    """Read Konnect presets from an undocumented response, skipping anything odd.
+def parse_presets(payload: Any, device_id: str) -> list[SensatePreset]:
+    """Read one faucet's Konnect presets from ``customer-experience``.
 
-    Field names follow the app's ``FaucetExperienceRequest`` model
-    (``experienceId``, ``experienceTitle``, ``experienceQuantity`` in liters).
+    The reply lists the presets of every device on the account; the Sensate's
+    are in ``sensateExperiences``, with ``dispenseAmount`` in liters. Anything
+    malformed is skipped.
     """
-    items: Any = payload
-    if isinstance(payload, dict):
-        items = next(
-            (
-                payload[key]
-                for key in ("experiences", "faucetExperiences", "presets", "data")
-                if isinstance(payload.get(key), list)
-            ),
-            [],
-        )
+    items = payload.get("sensateExperiences") if isinstance(payload, dict) else None
     if not isinstance(items, list):
         return []
     presets: list[SensatePreset] = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        preset_id = item.get("experienceId") or item.get("id")
-        title = item.get("experienceTitle") or item.get("title") or item.get("name")
-        quantity = item.get("experienceQuantity", item.get("quantity"))
-        if not isinstance(quantity, (int, float, str)):
+        if str(item.get("deviceId") or "").lower() != device_id.lower():
             continue
-        try:
-            liters = float(quantity)
-        except ValueError:
+        preset_id = item.get("experienceId")
+        title = item.get("title")
+        amount = item.get("dispenseAmount")
+        if (
+            preset_id in (None, "")
+            or not title
+            or isinstance(amount, bool)
+            or not isinstance(amount, (int, float))
+            or amount <= 0
+        ):
             continue
-        if preset_id in (None, "") or not title or liters <= 0:
-            continue
-        presets.append(SensatePreset(str(preset_id), str(title), liters))
+        presets.append(SensatePreset(str(preset_id), str(title), float(amount)))
     return presets
+
+
+def parse_usage(payload: Any) -> dict[str, float]:
+    """Read ``faucet-usage`` into liters per period, keyed like "2026-10-07"."""
+    items = (
+        payload.get("faucetUsageDataDetailsList") if isinstance(payload, dict) else None
+    )
+    if not isinstance(items, list):
+        raise SensateResponseError("Unexpected water usage reply from Kohler")
+    usage: dict[str, float] = {}
+    for item in items:
+        if not isinstance(item, dict) or not isinstance(
+            key := item.get("intervalKey"), str
+        ):
+            continue
+        liters = item.get("waterUsage", item.get("quantity"))
+        if isinstance(liters, (int, float)) and not isinstance(liters, bool):
+            usage[key] = usage.get(key, 0.0) + max(0.0, float(liters))
+    return usage
 
 
 def _api_error_detail(payload: Any) -> str:
@@ -351,6 +366,7 @@ class SensateApi:
         path: str,
         json_body: dict[str, Any] | None = None,
         *,
+        params: dict[str, str] | None = None,
         retry_on_401: bool = True,
     ) -> Any:
         token = await self._async_access_token()
@@ -366,6 +382,7 @@ class SensateApi:
                 f"{API_BASE}{path}",
                 headers=headers,
                 json=json_body,
+                params=params,
                 timeout=REQUEST_TIMEOUT,
             ) as response:
                 status = response.status
@@ -380,7 +397,7 @@ class SensateApi:
         if status == 401 and retry_on_401:
             await self._async_invalidate(token)
             return await self._async_request(
-                method, path, json_body, retry_on_401=False
+                method, path, json_body, params=params, retry_on_401=False
             )
         if status >= 400:
             raise SensateApiError(
@@ -440,18 +457,32 @@ class SensateApi:
         return await self._async_get_dict(API_FAUCET_CONFIG.format(device_id=device_id))
 
     async def async_get_presets(self, device_id: str) -> list[SensatePreset]:
-        """Return the faucet's Konnect presets; none saved answers HTTP 404."""
-        try:
-            payload = await self._async_request(
-                "GET", API_FAUCET_PRESETS.format(device_id=device_id)
-            )
-        except SensateApiError as err:
-            if err.status == 404:
-                return []
-            raise
-        presets = parse_presets(payload)
+        """Return the faucet's Konnect presets."""
+        await self.async_login()
+        payload = await self._async_request(
+            "GET", API_CUSTOMER_EXPERIENCE.format(tenant_id=self.tenant_id)
+        )
+        presets = parse_presets(payload, device_id)
         _LOGGER.debug("Konnect presets: %s", presets)
         return presets
+
+    async def async_get_usage(
+        self, device_id: str, start: date, end: date, interval: str
+    ) -> dict[str, float]:
+        """Return liters used per ``interval`` ("DAY" or "MONTH"), both ends included.
+
+        The parameter names are PascalCase, unlike the rest of Kohler's API.
+        """
+        payload = await self._async_request(
+            "GET",
+            API_FAUCET_USAGE.format(device_id=device_id),
+            params={
+                "FromDate": start.isoformat(),
+                "ToDate": end.isoformat(),
+                "Interval": interval,
+            },
+        )
+        return parse_usage(payload)
 
     async def async_register_push(self, identity: str) -> PushSettings:
         """Register this client for instant updates; returns IoT Hub credentials.

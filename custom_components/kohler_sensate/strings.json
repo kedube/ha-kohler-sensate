@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "off": "Off",
+          "on": "On"
+        }
       },
       "progress": {
-        "name": "Dispense progress"
+        "name": "Dispense progress",
+        "state": {
+          "not_started": "Not started"
+        }
       },
       "handle_state": {
-        "name": "Handle"
+        "name": "Handle",
+        "state": {
+          "open": "Open",
+          "closed": "Closed"
+        }
       },
       "last_dispense": {
         "name": "Last dispensed"
+      },
+      "water_total": {
+        "name": "Total water used"
+      },
+      "water_today": {
+        "name": "Water used today"
       }
     },
     "switch": {

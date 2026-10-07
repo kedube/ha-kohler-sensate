@@ -2,10 +2,11 @@
 
 The Konnect app gets real-time events by registering as a "mobile device" and
 holding an MQTT connection to Azure IoT Hub. Kohler sends events as IoT Hub
-direct methods on one account-wide topic. This client treats any message for
-this faucet only as a signal that something changed and asks the coordinator
-to re-read the state over HTTPS, so it doesn't depend on the undocumented
-message format. If the feed is quiet or down, polling carries on as usual.
+direct methods on one account-wide topic. Any message for this faucet makes
+the coordinator re-read the state over HTTPS. Two kinds of message also say
+what happened, and are passed on as a ``FaucetEvent``: ``SENSATE_STS`` (water
+on/off and handle position) and ``SENSATE_EXP_STS`` (a preset started or
+finished). If the feed is quiet or down, polling carries on as usual.
 
 The connection details follow the field notes of the MIT-licensed
 kohler-anthem-plus project (Anthem shower, same cloud):
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from dataclasses import dataclass
 import json
 import logging
 import re
@@ -40,6 +42,44 @@ _LOGGER = logging.getLogger(__name__)
 _RID = re.compile(r"\$rid=([^&]+)")
 CONNECT_TIMEOUT = 30
 KEEPALIVE = 60
+
+
+@dataclass(frozen=True, slots=True)
+class FaucetEvent:
+    """What a feed message says happened, as far as it's understood."""
+
+    status: str | None = None  # water "On"/"Off"
+    handle: str | None = None  # "OPEN"/"CLOSED"
+    preset: str | None = None  # name of the preset that started or finished
+    preset_on: bool | None = None
+
+
+def parse_event(payload: bytes) -> FaucetEvent | None:
+    """Read a ``SENSATE_STS`` or ``SENSATE_EXP_STS`` message; None for others."""
+    try:
+        message = json.loads(payload)
+    except ValueError:
+        return None
+    data = message.get("data") if isinstance(message, dict) else None
+    attributes = data.get("attributes") if isinstance(data, dict) else None
+    if not isinstance(attributes, list):
+        return None
+    for item in attributes:
+        if not isinstance(item, dict):
+            continue
+        status = item.get("status") if isinstance(item.get("status"), str) else None
+        if item.get("code") == "SENSATE_STS":
+            handle = item.get("handle")
+            return FaucetEvent(
+                status=status, handle=handle if isinstance(handle, str) else None
+            )
+        if item.get("code") == "SENSATE_EXP_STS" and status:
+            name = item.get("name")
+            return FaucetEvent(
+                preset=name if isinstance(name, str) and name else None,
+                preset_on=status.lower() == "on",
+            )
+    return None
 
 
 def _message_device(payload: bytes) -> str | None:
@@ -63,7 +103,7 @@ class SensatePush:
         api: SensateApi,
         device_id: str,
         identity: str,
-        on_activity: Callable[[bool], None],
+        on_activity: Callable[[bool, FaucetEvent | None], None],
         client_factory: Callable[..., mqtt.Client] | None = None,
     ) -> None:
         self._hass = hass
@@ -124,7 +164,7 @@ class SensatePush:
             if dropped:
                 # Polling stands in until the feed is back: catch up now, and
                 # at the pace used without the feed.
-                self._on_activity(False)
+                self._on_activity(False, None)
             delay = MQTT_BACKOFF[min(attempt, len(MQTT_BACKOFF) - 1)]
             attempt += 1
             self.next_retry_at = time.time() + delay
@@ -158,7 +198,7 @@ class SensatePush:
         self.connected = True
         self.last_error = None
         _LOGGER.debug("Instant updates connected")
-        self._on_activity(False)
+        self._on_activity(False, None)
 
     async def _async_close(self) -> None:
         self.connected = False
@@ -209,7 +249,7 @@ class SensatePush:
         device = _message_device(message.payload)
         if device is not None and device.lower() != self._device_id:
             return  # another device on the account, such as a shower
-        self._call(self._message_received)
+        self._call(self._message_received, parse_event(message.payload))
 
     def _on_disconnect(
         self, client: mqtt.Client, _userdata: Any, _flags: Any, reason: Any, _props: Any
@@ -229,7 +269,7 @@ class SensatePush:
             else:
                 ready.set_exception(error)
 
-    def _message_received(self) -> None:
+    def _message_received(self, event: FaucetEvent | None) -> None:
         self.messages += 1
         self.last_message_at = time.time()
-        self._on_activity(True)
+        self._on_activity(True, event)

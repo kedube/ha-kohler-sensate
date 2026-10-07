@@ -147,16 +147,33 @@
     },
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "off": "Desligado",
+          "on": "Ligado"
+        }
       },
       "progress": {
-        "name": "Progresso da dosagem"
+        "name": "Progresso da dosagem",
+        "state": {
+          "not_started": "Não iniciado"
+        }
       },
       "handle_state": {
-        "name": "Alavanca"
+        "name": "Alavanca",
+        "state": {
+          "open": "Aberta",
+          "closed": "Fechada"
+        }
       },
       "last_dispense": {
         "name": "Última dosagem"
+      },
+      "water_total": {
+        "name": "Consumo total de água"
+      },
+      "water_today": {
+        "name": "Consumo de água hoje"
       }
     },
     "switch": {
