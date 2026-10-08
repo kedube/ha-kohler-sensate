@@ -64,13 +64,11 @@
         "title": "Kohler-Sensate-Optionen",
         "data": {
           "unit_system": "Einheiten",
-          "max_run_minutes": "Wasser-Sicherheitslimit",
-          "push_updates": "Sofortige Aktualisierungen"
+          "max_run_minutes": "Wasser-Sicherheitslimit"
         },
         "data_description": {
           "unit_system": "Einheiten für die Schnelldosier-Tasten, die Dosiermenge, den Sensor „Zuletzt dosiert“ und die Standardeinheit der Dosier-Aktion.",
-          "max_run_minutes": "Schaltet das Wasser so viele Minuten nach dem Einschalten aus Home Assistant ab, sofern es nicht zwischendurch abgeschaltet wurde. 0 deaktiviert das Limit.",
-          "push_updates": "Hört wie die Konnect-App auf Kohlers Echtzeit-Feed und aktualisiert, sobald sich die Armatur ändert. Fügt den Benachrichtigungsgeräten deines Kohler-Kontos einen Home-Assistant-Eintrag hinzu. Die regelmäßige Abfrage läuft als Rückfallebene weiter."
+          "max_run_minutes": "Schaltet das Wasser so viele Minuten nach dem Einschalten aus Home Assistant ab, sofern es nicht zwischendurch abgeschaltet wurde. 0 deaktiviert das Limit."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Dosierfortschritt",
+        "name": "Firmware-Download",
         "state": {
-          "not_started": "Nicht gestartet"
+          "not_started": "Nicht gestartet",
+          "downloading": "Wird heruntergeladen",
+          "completed": "Abgeschlossen"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} ist offline: Die Kohler-Cloud erreicht die Armatur nicht. Prüfe Stromversorgung und WLAN."
     },
+    "handle_closed": {
+      "message": "Der Hebel von {name} ist geschlossen. Öffne den Hebel, um aus der Ferne Wasser zu dosieren."
+    },
+    "firmware_updating": {
+      "message": "{name} installiert gerade ein Firmware-Update. Versuche es erneut, wenn es abgeschlossen ist."
+    },
+    "not_dispensed": {
+      "message": "Kohler konnte an {name} kein Wasser dosieren. Schalte die Armatur von Hand ein."
+    },
+    "command_forbidden": {
+      "message": "Kohler hat den Befehl für {name} mit dieser Anmeldung abgelehnt. Prüfe, ob es ein Update für diese Integration gibt."
+    },
     "rate_limited": {
       "message": "Kohler drosselt die Anfragen. Versuche es in {seconds} Sekunden erneut."
     },
     "preset_out_of_range": {
-      "message": "Die Voreinstellung „{title}“ liegt außerhalb des Dosierbereichs von 10 mL bis 4 L."
+      "message": "Die Voreinstellung „{title}“ liegt außerhalb des Dosierbereichs von 10 mL bis 11,36 L (3 Gallonen)."
     },
     "preset_not_found": {
       "message": "{name} hat keine Voreinstellung namens „{preset}“. Vorhandene Voreinstellungen: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Menge",
-          "description": "Wie viel Wasser dosiert werden soll, in der gewählten Einheit (zwischen 10 mL und 4 L)."
+          "description": "Wie viel Wasser dosiert werden soll, in der gewählten Einheit (zwischen 10 mL und 11,36 L bzw. 3 Gallonen)."
         },
         "unit": {
           "name": "Einheit",

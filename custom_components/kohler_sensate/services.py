@@ -6,6 +6,7 @@ Usable from automations, scripts and voice assistants, e.g. "dispense 300 mL",
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 from homeassistant.const import ATTR_DEVICE_ID
@@ -79,6 +80,23 @@ def _target_entries(hass: HomeAssistant, call: ServiceCall) -> list[SensateConfi
     return loaded
 
 
+def limit_text(value: float, *, up: bool) -> str:
+    """A dispense limit to 4 significant digits, without exponent notation.
+
+    Rounded inward (the minimum up, the maximum down), so every amount in the
+    range the message states is accepted.
+    """
+    digits = max(0, 3 - math.floor(math.log10(value)))
+    scale = 10**digits
+    # The nudge keeps float noise like 1135.9999999 from rounding a step away.
+    scaled = math.ceil(value * scale - 1e-6) if up else math.floor(value * scale + 1e-6)
+    return (
+        f"{scaled / scale:.{digits}f}".rstrip("0").rstrip(".")
+        if digits
+        else str(scaled)
+    )
+
+
 def _requested_ml(call: ServiceCall, default_unit: str) -> tuple[float, str]:
     """Return (milliliters, unit the caller used)."""
     if ATTR_AMOUNT_ML in call.data:
@@ -117,8 +135,8 @@ def _requested(
             translation_domain=DOMAIN,
             translation_key="amount_out_of_range",
             translation_placeholders={
-                "min": f"{from_ml(DISPENSE_MIN_ML, unit):.3g}",
-                "max": f"{from_ml(DISPENSE_MAX_ML, unit):.3g}",
+                "min": limit_text(from_ml(DISPENSE_MIN_ML, unit), up=True),
+                "max": limit_text(from_ml(DISPENSE_MAX_ML, unit), up=False),
                 "unit": UNIT_LABELS[unit],
             },
         )

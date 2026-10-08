@@ -4,6 +4,65 @@
 by ### Added, Changed, Deprecated, Removed, Fixed, Security or Breaking
 changes. Pushing to main releases them; see "Releasing" in the README. -->
 
+## Unreleased
+
+### Removed
+
+- The *Instant updates* option. Instant updates are always on, as in the
+  Konnect app, and polling carries on beside them as a safety net. A faucet
+  that had them off now connects, which adds a "HomeAssistant" entry to the
+  Kohler account's notification devices.
+
+### Added
+
+- Konnect faucets with SKU `SET` (probably the Setra), which the Konnect app
+  handles like the Sensate, are found during setup. Commands send each
+  faucet's own SKU instead of always `SEN`.
+- With instant updates, *Leak* turns on as soon as Kohler sends its real-time
+  leak alert, instead of when the leak history is next read. *Leak* also has
+  a `last_detected` attribute.
+- *Firmware* asks Kohler's firmware check, the one the Konnect app uses,
+  whether newer firmware is available, every hour and after an install.
+- Clear errors when Kohler won't carry out a command: the faucet is offline,
+  firmware is updating, water couldn't be dispensed, or commands are refused
+  for this sign-in.
+
+### Changed
+
+- Dispenses and presets can be up to 3 gallons (11.36 L), the Konnect app's
+  limit, instead of 4 L. Presets saved in the app above 4 L can now be
+  dispensed. Larger dispenses count as dispensing for longer if the faucet
+  never reports the water off.
+- Like the Konnect app, turning the water on or dispensing is refused while
+  the handle is closed or the faucet is downloading firmware. Turning the
+  water off always works.
+- *Dispense progress* is renamed *Firmware download*: Kohler's `progress`
+  field follows firmware downloads, not the water.
+- Presets come from the faucet's own preset list, as the app's faucet screen
+  reads them, with the account-wide list as a fallback.
+- Pressing *Clear leak alert* also clears a leak detected before then that
+  Kohler only lists later. *Leak*'s `latest` attribute is the most recently
+  detected event, whatever order Kohler lists them in.
+- Faucets on one Kohler account share one instant-updates connection and
+  one entry among the account's notification devices, instead of one each:
+  Kohler's feed covers the whole account. Entries added by earlier versions
+  for the other faucets are removed.
+- Deleting the last faucet on an account removes its instant-updates entry
+  from the account's notification devices.
+
+### Fixed
+
+- A firmware status in Kohler's `progress` field could make *Water* and
+  *Dispensing* show the water running during a firmware update.
+- A command Kohler answered with HTTP 200 but refused in the reply, such as
+  "water could not be dispensed", was taken as carried out.
+- Feed messages that don't name a device no longer count as proof that
+  instant updates report this faucet.
+- An app preset reported as anything but `OFF` counts as running, as in the
+  Konnect app.
+- The out-of-range message for the `dispense` action shows its limits
+  without exponents, rounded so every amount it states is accepted.
+
 ## 0.9.0
 
 ### Changed

@@ -54,15 +54,15 @@ SENSORS: tuple[SensateSensorDescription, ...] = (
         field="handleState",
         known=("open", "closed"),
     ),
-    # The Sensate leaves this at "NotStarted" even mid-dispense; see the
-    # Dispensing binary sensor instead.
+    # Kohler's "progress" is the firmware download ("Downloading" during an
+    # update), not the dispense; see the Dispensing binary sensor for that.
     SensateSensorDescription(
         key="progress",
         translation_key="progress",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         field="progress",
-        known=("not_started",),
+        known=("not_started", "downloading", "completed"),
     ),
 )
 

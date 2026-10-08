@@ -60,7 +60,7 @@ class SensateEntity(CoordinatorEntity[SensateCoordinator]):
             identifiers={(DOMAIN, coordinator.device_id)},
             manufacturer="Kohler",
             model="Sensate",
-            model_id=as_text(about.get("model")) or "SEN",
+            model_id=as_text(about.get("model")) or coordinator.sku,
             name=coordinator.config_entry.title,
             sw_version=as_text(about.get("firmware")),
             hw_version=as_text(about.get("hardware")),

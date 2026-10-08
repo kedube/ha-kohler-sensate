@@ -26,10 +26,7 @@ async def test_diagnostics_redacted(
     for secret in (PASSWORD, USERNAME, DEVICE_ID, "SN-SECRET-1"):
         assert secret not in dumped
     assert diagnostics["state"]["status"] == "Off"
-    assert diagnostics["entry"]["options"] == {
-        "unit_system": "metric",
-        "push_updates": False,
-    }
+    assert diagnostics["entry"]["options"] == {"unit_system": "metric"}
     about = diagnostics["configuration"]["configuration"]["about"]
     assert about["firmware"]["version"] == "16.0"
 

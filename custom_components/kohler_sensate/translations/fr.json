@@ -64,13 +64,11 @@
         "title": "Options Kohler Sensate",
         "data": {
           "unit_system": "Unités",
-          "max_run_minutes": "Limite de sécurité de l'eau",
-          "push_updates": "Mises à jour instantanées"
+          "max_run_minutes": "Limite de sécurité de l'eau"
         },
         "data_description": {
           "unit_system": "Unités des boutons de distribution rapide, de la quantité à distribuer, du capteur de dernière distribution et de l'unité par défaut de l'action de distribution.",
-          "max_run_minutes": "Coupe l'eau ce nombre de minutes après son ouverture depuis Home Assistant, sauf si elle a été coupée entre-temps. 0 désactive la limite.",
-          "push_updates": "Écoute le flux en temps réel de Kohler, comme l'application Konnect, et met à jour dès que le robinet change. Ajoute une entrée Home Assistant aux appareils de notification de votre compte Kohler. L'interrogation périodique continue en secours."
+          "max_run_minutes": "Coupe l'eau ce nombre de minutes après son ouverture depuis Home Assistant, sauf si elle a été coupée entre-temps. 0 désactive la limite."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Progression de la distribution",
+        "name": "Téléchargement du firmware",
         "state": {
-          "not_started": "Non démarré"
+          "not_started": "Non démarré",
+          "downloading": "Téléchargement en cours",
+          "completed": "Terminé"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} est hors ligne : le cloud Kohler ne parvient pas à joindre le robinet. Vérifiez son alimentation et son Wi-Fi."
     },
+    "handle_closed": {
+      "message": "La manette de {name} est fermée. Ouvrez la manette pour distribuer de l'eau à distance."
+    },
+    "firmware_updating": {
+      "message": "{name} installe une mise à jour du firmware. Réessayez une fois qu'elle est terminée."
+    },
+    "not_dispensed": {
+      "message": "Kohler n'a pas pu distribuer d'eau avec {name}. Ouvrez le robinet à la main."
+    },
+    "command_forbidden": {
+      "message": "Kohler a refusé la commande pour {name} avec cette connexion. Vérifiez s'il existe une mise à jour de cette intégration."
+    },
     "rate_limited": {
       "message": "Kohler limite les requêtes. Réessayez dans {seconds} secondes."
     },
     "preset_out_of_range": {
-      "message": "Le préréglage « {title} » est en dehors de la plage de distribution de 10 mL à 4 L."
+      "message": "Le préréglage « {title} » est en dehors de la plage de distribution de 10 mL à 11,36 L (3 gallons)."
     },
     "preset_not_found": {
       "message": "{name} n'a aucun préréglage nommé « {preset} ». Ses préréglages : {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Quantité",
-          "description": "Quantité d'eau à distribuer, dans l'unité choisie (entre 10 mL et 4 L)."
+          "description": "Quantité d'eau à distribuer, dans l'unité choisie (entre 10 mL et 11,36 L, soit 3 gallons)."
         },
         "unit": {
           "name": "Unité",

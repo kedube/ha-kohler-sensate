@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SensateConfigEntry
-from .coordinator import SensateCoordinator
+from .coordinator import SensateCoordinator, leak_time
 from .entity import SensateEntity
 
 PARALLEL_UPDATES = 0
@@ -35,11 +35,12 @@ async def async_setup_entry(
 
 
 class SensateLeakSensor(SensateEntity, BinarySensorEntity):
-    """On while Kohler reports a leak event that hasn't been cleared.
+    """On while Kohler reports a leak that hasn't been cleared.
 
-    Kohler keeps leak events in the faucet's history, so "any event" would
-    stay on for good. Press "Clear leak alert" to acknowledge the current
-    events; a new one turns the sensor back on.
+    Leaks come from the faucet's leak history and, with instant updates, the
+    feed's real-time leak alert. Kohler keeps the history, so "any event"
+    would stay on for good. Press "Clear leak alert" to acknowledge the
+    current leaks; a new one turns the sensor back on.
     """
 
     _requires_online = False
@@ -53,6 +54,8 @@ class SensateLeakSensor(SensateEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         # Unknown, not "dry", until the configuration has been read once.
+        if self.coordinator.leak_alert:
+            return True
         if not self.coordinator.config_loaded:
             return None
         return bool(self.coordinator.active_leaks)
@@ -60,10 +63,15 @@ class SensateLeakSensor(SensateEntity, BinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         history = self.coordinator.leak_history
+        last = self.coordinator.last_leak_at
         return {
             "events": len(history),
             "uncleared_events": len(self.coordinator.active_leaks),
-            "latest": history[-1] if history else None,
+            # Kohler's order isn't guaranteed; the app sorts by time too.
+            "latest": max(history, key=lambda e: leak_time(e) or 0)
+            if history
+            else None,
+            "last_detected": last.isoformat() if last else None,
         }
 
 

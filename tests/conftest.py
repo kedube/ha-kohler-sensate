@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Callable, Generator
+from datetime import timedelta
 import json
 import re
 import time
@@ -18,8 +19,12 @@ from aiohttp import ClientError
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.util import dt as dt_util
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMocker,
     AiohttpClientMockResponse,
@@ -28,7 +33,6 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
 from custom_components.kohler_sensate.const import (
     API_BASE,
     CONF_DEVICE_ID,
-    CONF_PUSH_UPDATES,
     CONF_UNIT_SYSTEM,
     DOMAIN,
     TOKEN_URL,
@@ -57,6 +61,9 @@ class FakeKohler:
         self.token_requests: list[dict[str, str]] = []
         # Queued token responses: (status, json) tuples or exceptions.
         self.token_queue: list[Any] = []
+        # Account ids of other accounts, by email; others sign in as TENANT_ID.
+        self.tenants: dict[str, str] = {}
+        self._refresh_tenants: dict[str, str] = {}
         # Queued API responses, keyed by path suffix: (status, json) or exceptions.
         self.api_queue: dict[str, list[Any]] = {}
         self.commands: list[tuple[str, dict[str, Any]]] = []
@@ -88,8 +95,17 @@ class FakeKohler:
         }
         # None leaves connectionState out of the reply.
         self.connection: str | None = "Connected"
+        # The SKU in the faucet-state reply; None leaves it out.
+        self.state_sku: str | None = "SEN"
         # This faucet's entries in customer-experience's "sensateExperiences".
         self.presets: list[dict[str, Any]] = []
+        # Its entries in faucet-experience?DeviceIds=; None answers 404, as
+        # the app-only route did before it was known.
+        self.faucet_presets: list[dict[str, Any]] | None = None
+        # The firmware check's reply; None answers 404.
+        self.firmware: dict[str, Any] | None = None
+        # Instant-updates registrations removed with DELETE, by identity.
+        self.unregistered: list[str] = []
         # Liters per period, as faucet-usage reports them.
         self.usage_months: dict[str, float] = {"2025-04": 1.593, "2026-10": 1.6144}
         self.usage_days: dict[str, float] = {"2026-10-07": 1.5274}
@@ -97,6 +113,7 @@ class FakeKohler:
         mocker.post(TOKEN_URL, side_effect=self._token)
         mocker.request("get", re.compile(re.escape(API_BASE)), side_effect=self._api)
         mocker.request("post", re.compile(re.escape(API_BASE)), side_effect=self._api)
+        mocker.request("delete", re.compile(re.escape(API_BASE)), side_effect=self._api)
 
     @property
     def access_tokens(self) -> list[str]:
@@ -122,14 +139,21 @@ class FakeKohler:
         if self.token_queue:
             return self._respond(method, url, self.token_queue.pop(0))
         self.issued += 1
+        form = dict(data)
+        if form.get("grant_type") == "refresh_token":
+            tenant = self._refresh_tenants.get(form.get("refresh_token", ""), TENANT_ID)
+        else:
+            tenant = self.tenants.get(form.get("username", ""), TENANT_ID)
+        refresh = f"refresh-{self.issued}"
+        self._refresh_tenants[refresh] = tenant
         return self._respond(
             method,
             url,
             (
                 200,
                 {
-                    "access_token": make_jwt({"oid": TENANT_ID, "n": self.issued}),
-                    "refresh_token": f"refresh-{self.issued}",
+                    "access_token": make_jwt({"oid": tenant, "n": self.issued}),
+                    "refresh_token": refresh,
                     "expires_in": "3600",
                 },
             ),
@@ -140,6 +164,11 @@ class FakeKohler:
         for suffix, queue in self.api_queue.items():
             if path.endswith(suffix) and queue:
                 return self._respond(method, url, queue.pop(0))
+        if method.lower() == "delete":
+            if "/mobile/settings/" in path:
+                self.unregistered.append(path.rsplit("/", 1)[-1])
+                return self._respond(method, url, (200, {}))
+            return self._respond(method, url, (404, {"message": "not found"}))
         if path.endswith("/mobile/settings"):
             self.push_registrations.append(data)
             n = len(self.push_registrations)
@@ -178,6 +207,8 @@ class FakeKohler:
             )
         if "/faucet-state/" in path:
             body: dict[str, Any] = {"state": dict(self.state)}
+            if self.state_sku is not None:
+                body["sku"] = self.state_sku
             if self.connection is not None:
                 body["connectionState"] = self.connection
                 body["lastConnected"] = "2026-10-06T12:00:00Z"
@@ -212,6 +243,13 @@ class FakeKohler:
             )
         if "/faucet-configuration/" in path:
             return self._respond(method, url, (200, self.config))
+        if path.endswith("/faucet-experience") and self.faucet_presets is not None:
+            if url.query.get("DeviceIds") != DEVICE_ID:
+                return self._respond(method, url, (400, {"message": "Bad Request"}))
+            group = {"deviceId": DEVICE_ID, "experience": self.faucet_presets}
+            return self._respond(method, url, (200, {"faucetExperienceList": [group]}))
+        if "/firmware/sensate/" in path and self.firmware is not None:
+            return self._respond(method, url, (200, self.firmware))
         return self._respond(method, url, (404, {"message": "not found"}))
 
     def fail_api(self, suffix: str, *items: Any) -> None:
@@ -369,8 +407,7 @@ def config_entry(hass: HomeAssistant) -> MockConfigEntry:
             CONF_PASSWORD: PASSWORD,
             CONF_DEVICE_ID: DEVICE_ID,
         },
-        # Most tests exercise polling alone; test_push covers instant updates.
-        options={CONF_UNIT_SYSTEM: UNIT_SYSTEM_METRIC, CONF_PUSH_UPDATES: False},
+        options={CONF_UNIT_SYSTEM: UNIT_SYSTEM_METRIC},
     )
     entry.add_to_hass(hass)
     return entry
@@ -380,7 +417,17 @@ def config_entry(hass: HomeAssistant) -> MockConfigEntry:
 async def setup_entry(
     hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
 ) -> MockConfigEntry:
+    """The faucet, set up and connected to the (fake) instant-updates feed.
+
+    Instant updates are always on. Until a message about the faucet arrives,
+    polling runs at its usual pace, as it would without them.
+    """
     assert await hass.config_entries.async_setup(config_entry.entry_id)
+    push = config_entry.runtime_data.push
+    await wait_for(hass, lambda: push.connected, "the first connection")
+    # Connecting re-reads the faucet; let that re-read's 1 s cooldown pass, so
+    # the re-read after a test's first command isn't held back by it.
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=1))
     await hass.async_block_till_done()
     return config_entry
 
@@ -402,13 +449,6 @@ async def wait_for(
 
 
 @pytest.fixture
-async def push_entry(
-    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
-) -> MockConfigEntry:
-    hass.config_entries.async_update_entry(
-        config_entry, options={**config_entry.options, CONF_PUSH_UPDATES: True}
-    )
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    push = config_entry.runtime_data.push
-    await wait_for(hass, lambda: push.connected, "the first connection")
-    return config_entry
+async def push_entry(setup_entry: MockConfigEntry) -> MockConfigEntry:
+    """``setup_entry``, by the name the instant-updates tests use."""
+    return setup_entry

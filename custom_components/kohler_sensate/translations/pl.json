@@ -64,13 +64,11 @@
         "title": "Opcje Kohler Sensate",
         "data": {
           "unit_system": "Jednostki",
-          "max_run_minutes": "Limit bezpieczeństwa wody",
-          "push_updates": "Natychmiastowe aktualizacje"
+          "max_run_minutes": "Limit bezpieczeństwa wody"
         },
         "data_description": {
           "unit_system": "Jednostki przycisków szybkiego nalewania, ilości do nalania i sensora ostatniego nalewania oraz domyślna jednostka akcji nalewania.",
-          "max_run_minutes": "Zakręca wodę po tylu minutach od jej odkręcenia z Home Assistant, chyba że w międzyczasie została zakręcona. 0 wyłącza limit.",
-          "push_updates": "Nasłuchuje kanału czasu rzeczywistego Kohler, tak jak aplikacja Konnect, i aktualizuje stan, gdy tylko kran się zmieni. Dodaje wpis Home Assistant do urządzeń powiadomień na Twoim koncie Kohler. Okresowe odpytywanie działa dalej jako zabezpieczenie."
+          "max_run_minutes": "Zakręca wodę po tylu minutach od jej odkręcenia z Home Assistant, chyba że w międzyczasie została zakręcona. 0 wyłącza limit."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Postęp nalewania",
+        "name": "Pobieranie oprogramowania układowego",
         "state": {
-          "not_started": "Nie rozpoczęto"
+          "not_started": "Nie rozpoczęto",
+          "downloading": "Pobieranie",
+          "completed": "Zakończono"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} jest offline: chmura Kohler nie może połączyć się z kranem. Sprawdź jego zasilanie i Wi-Fi."
     },
+    "handle_closed": {
+      "message": "{name}: dźwignia jest zamknięta. Otwórz dźwignię, aby zdalnie nalewać wodę."
+    },
+    "firmware_updating": {
+      "message": "{name} instaluje aktualizację oprogramowania układowego. Spróbuj ponownie po jej zakończeniu."
+    },
+    "not_dispensed": {
+      "message": "{name}: Kohler nie mógł nalać wody. Odkręć kran ręcznie."
+    },
+    "command_forbidden": {
+      "message": "{name}: Kohler odrzucił polecenie przy tym logowaniu. Sprawdź, czy jest dostępna aktualizacja tej integracji."
+    },
     "rate_limited": {
       "message": "Kohler ogranicza liczbę żądań. Spróbuj ponownie za {seconds} s."
     },
     "preset_out_of_range": {
-      "message": "Ustawienie wstępne „{title}” wykracza poza zakres nalewania od 10 mL do 4 L."
+      "message": "Ustawienie wstępne „{title}” wykracza poza zakres nalewania od 10 mL do 11,36 L (3 galony)."
     },
     "preset_not_found": {
       "message": "{name} nie ma ustawienia wstępnego o nazwie „{preset}”. Dostępne ustawienia: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Ilość",
-          "description": "Ile wody nalać, w wybranej jednostce (od 10 mL do 4 L)."
+          "description": "Ile wody nalać, w wybranej jednostce (od 10 mL do 11,36 L, czyli 3 galonów)."
         },
         "unit": {
           "name": "Jednostka",

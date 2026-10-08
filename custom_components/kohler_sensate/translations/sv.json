@@ -64,13 +64,11 @@
         "title": "Alternativ för Kohler Sensate",
         "data": {
           "unit_system": "Enheter",
-          "max_run_minutes": "Säkerhetsgräns för vatten",
-          "push_updates": "Direktuppdateringar"
+          "max_run_minutes": "Säkerhetsgräns för vatten"
         },
         "data_description": {
           "unit_system": "Enheter för snabbtappningsknapparna, tappmängden, sensorn för senaste tappning och standardenheten för tappningsåtgärden.",
-          "max_run_minutes": "Stänger av vattnet så många minuter efter att det slagits på från Home Assistant, om det inte har stängts av under tiden. 0 stänger av gränsen.",
-          "push_updates": "Lyssnar på Kohlers realtidsflöde, precis som Konnect-appen, och uppdaterar så fort kranen ändras. Lägger till en Home Assistant-post bland aviseringsenheterna på ditt Kohler-konto. Den regelbundna avfrågningen fortsätter som reserv."
+          "max_run_minutes": "Stänger av vattnet så många minuter efter att det slagits på från Home Assistant, om det inte har stängts av under tiden. 0 stänger av gränsen."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Tappningsförlopp",
+        "name": "Nedladdning av firmware",
         "state": {
-          "not_started": "Inte startad"
+          "not_started": "Inte startad",
+          "downloading": "Laddar ned",
+          "completed": "Klar"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} är offline: Kohlers moln når inte kranen. Kontrollera strömmen och wifi-anslutningen."
     },
+    "handle_closed": {
+      "message": "Handtaget på {name} är stängt. Öppna handtaget för att tappa vatten på distans."
+    },
+    "firmware_updating": {
+      "message": "{name} installerar en firmwareuppdatering. Försök igen när den är klar."
+    },
+    "not_dispensed": {
+      "message": "Kohler kunde inte tappa vatten från {name}. Sätt på kranen för hand."
+    },
+    "command_forbidden": {
+      "message": "Kohler nekade kommandot för {name} med den här inloggningen. Kontrollera om det finns en uppdatering av den här integrationen."
+    },
     "rate_limited": {
       "message": "Kohler begränsar antalet förfrågningar. Försök igen om {seconds} sekunder."
     },
     "preset_out_of_range": {
-      "message": "Förinställningen ”{title}” ligger utanför tappintervallet 10 mL till 4 L."
+      "message": "Förinställningen ”{title}” ligger utanför tappintervallet 10 mL till 11,36 L (3 gallon)."
     },
     "preset_not_found": {
       "message": "{name} har ingen förinställning som heter ”{preset}”. Tillgängliga förinställningar: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Mängd",
-          "description": "Hur mycket vatten som ska tappas, i den valda enheten (mellan 10 mL och 4 L)."
+          "description": "Hur mycket vatten som ska tappas, i den valda enheten (mellan 10 mL och 11,36 L, eller 3 gallon)."
         },
         "unit": {
           "name": "Enhet",

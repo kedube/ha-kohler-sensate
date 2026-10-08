@@ -83,6 +83,16 @@ def _diagnostics(entry: SensateConfigEntry) -> dict[str, Any]:
         "uncleared_leak_events": len(coordinator.active_leaks),
         "update_interval": str(coordinator.update_interval),
         "connection_state": coordinator.connection_state,
+        "sku": coordinator.sku,
+        "firmware_check": None
+        if (firmware := coordinator.firmware) is None
+        else {
+            "available": firmware.available,
+            "latest": firmware.latest,
+            "current": firmware.current,
+            "mandatory": firmware.mandatory,
+        },
+        "leak_alert": coordinator.leak_alert,
         # Every status/progress/handle value seen since startup, to extend the
         # integration's list of known values.
         "seen_values": {
@@ -91,6 +101,7 @@ def _diagnostics(entry: SensateConfigEntry) -> dict[str, Any]:
         "presets": [
             {"title": p.title, "liters": p.liters} for p in coordinator.presets.values()
         ],
+        "preset_source": coordinator.preset_source,
         "water_safety_limit_minutes": coordinator.max_run_minutes,
         "water_usage_liters": {
             "total": coordinator.usage_total_liters,
@@ -101,7 +112,9 @@ def _diagnostics(entry: SensateConfigEntry) -> dict[str, Any]:
         if (push := coordinator.push) is None
         else {
             "connected": push.connected,
-            "messages_for_this_faucet": push.messages,
+            "messages_for_this_faucet": push.messages_for(coordinator.device_id),
+            # Faucets on one account share one connection.
+            "faucets_on_connection": push.faucets,
             "verified": coordinator.push_verified,
             "missed_changes": coordinator.push_missed,
             "last_error": push.last_error,

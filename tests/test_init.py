@@ -133,7 +133,10 @@ async def test_password_changed_while_running(
 async def test_config_failure_does_not_block_state(
     hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
 ) -> None:
-    kohler.fail_api(f"/faucet-configuration/{DEVICE_ID}", (400, {"message": "bad"}))
+    # Every try fails: at setup, and when the feed connects and re-reads.
+    kohler.fail_api(
+        f"/faucet-configuration/{DEVICE_ID}", *[(400, {"message": "bad"})] * 5
+    )
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
 

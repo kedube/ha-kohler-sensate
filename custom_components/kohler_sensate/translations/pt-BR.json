@@ -64,13 +64,11 @@
         "title": "Opções do Kohler Sensate",
         "data": {
           "unit_system": "Unidades",
-          "max_run_minutes": "Limite de segurança da água",
-          "push_updates": "Atualizações instantâneas"
+          "max_run_minutes": "Limite de segurança da água"
         },
         "data_description": {
           "unit_system": "Unidades dos botões de dosagem rápida, da quantidade a dosar, do sensor da última dosagem e unidade padrão da ação de dosar.",
-          "max_run_minutes": "Fecha a água este número de minutos depois de ela ser aberta pelo Home Assistant, a menos que tenha sido fechada nesse meio-tempo. 0 desativa o limite.",
-          "push_updates": "Escuta o canal em tempo real da Kohler, como o app Konnect, e atualiza assim que a torneira muda. Adiciona uma entrada do Home Assistant aos dispositivos de notificação da sua conta Kohler. A consulta periódica continua como reserva."
+          "max_run_minutes": "Fecha a água este número de minutos depois de ela ser aberta pelo Home Assistant, a menos que tenha sido fechada nesse meio-tempo. 0 desativa o limite."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Progresso da dosagem",
+        "name": "Download do firmware",
         "state": {
-          "not_started": "Não iniciado"
+          "not_started": "Não iniciado",
+          "downloading": "Baixando",
+          "completed": "Concluído"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} está offline: a nuvem da Kohler não consegue alcançar a torneira. Verifique a alimentação e o Wi-Fi."
     },
+    "handle_closed": {
+      "message": "A alavanca de {name} está fechada. Abra a alavanca para dosar água remotamente."
+    },
+    "firmware_updating": {
+      "message": "{name} está instalando uma atualização de firmware. Tente novamente quando terminar."
+    },
+    "not_dispensed": {
+      "message": "A Kohler não conseguiu dosar água de {name}. Abra a torneira manualmente."
+    },
+    "command_forbidden": {
+      "message": "A Kohler recusou o comando para {name} com este login. Verifique se há uma atualização desta integração."
+    },
     "rate_limited": {
       "message": "A Kohler está limitando as solicitações. Tente novamente em {seconds} segundos."
     },
     "preset_out_of_range": {
-      "message": "A predefinição \"{title}\" está fora da faixa de dosagem de 10 mL a 4 L."
+      "message": "A predefinição \"{title}\" está fora da faixa de dosagem de 10 mL a 11,36 L (3 galões)."
     },
     "preset_not_found": {
       "message": "{name} não tem nenhuma predefinição chamada \"{preset}\". Predefinições disponíveis: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Quantidade",
-          "description": "Quanta água dosar, na unidade escolhida (entre 10 mL e 4 L)."
+          "description": "Quanta água dosar, na unidade escolhida (entre 10 mL e 11,36 L, ou 3 galões)."
         },
         "unit": {
           "name": "Unidade",

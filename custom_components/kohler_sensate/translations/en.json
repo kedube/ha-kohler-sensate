@@ -64,13 +64,11 @@
         "title": "Kohler Sensate options",
         "data": {
           "unit_system": "Units",
-          "max_run_minutes": "Water safety limit",
-          "push_updates": "Instant updates"
+          "max_run_minutes": "Water safety limit"
         },
         "data_description": {
           "unit_system": "Units for the quick-dispense buttons, the dispense amount, the last dispense sensor, and the default unit of the dispense action.",
-          "max_run_minutes": "Turn the water off this many minutes after it's turned on from Home Assistant, unless it's turned off in the meantime. 0 turns the limit off.",
-          "push_updates": "Listen to Kohler's real-time feed, like the Konnect app does, and update as soon as the faucet changes. Adds a Home Assistant entry to your Kohler account's notification devices. Polling continues as a backup."
+          "max_run_minutes": "Turn the water off this many minutes after it's turned on from Home Assistant, unless it's turned off in the meantime. 0 turns the limit off."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Dispense progress",
+        "name": "Firmware download",
         "state": {
-          "not_started": "Not started"
+          "not_started": "Not started",
+          "downloading": "Downloading",
+          "completed": "Completed"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} is offline: Kohler's cloud can't reach the faucet. Check its power and Wi-Fi."
     },
+    "handle_closed": {
+      "message": "{name}'s handle is closed. Open the handle to dispense water remotely."
+    },
+    "firmware_updating": {
+      "message": "{name} is installing a firmware update. Try again when it has finished."
+    },
+    "not_dispensed": {
+      "message": "Kohler couldn't dispense water from {name}. Turn the faucet on by hand."
+    },
+    "command_forbidden": {
+      "message": "Kohler refused the command for {name} with this sign-in. Check for an update to this integration."
+    },
     "rate_limited": {
       "message": "Kohler is limiting requests. Try again in {seconds} seconds."
     },
     "preset_out_of_range": {
-      "message": "The preset \"{title}\" is outside the 10 mL to 4 L dispense range."
+      "message": "The preset \"{title}\" is outside the 10 mL to 11.36 L (3 gallon) dispense range."
     },
     "preset_not_found": {
       "message": "{name} has no preset called \"{preset}\". Its presets: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Amount",
-          "description": "How much water to dispense, in the chosen unit (between 10 mL and 4 L)."
+          "description": "How much water to dispense, in the chosen unit (between 10 mL and 11.36 L, or 3 gallons)."
         },
         "unit": {
           "name": "Unit",

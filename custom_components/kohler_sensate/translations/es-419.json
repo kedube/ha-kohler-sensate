@@ -64,13 +64,11 @@
         "title": "Opciones de Kohler Sensate",
         "data": {
           "unit_system": "Unidades",
-          "max_run_minutes": "Límite de seguridad del agua",
-          "push_updates": "Actualizaciones instantáneas"
+          "max_run_minutes": "Límite de seguridad del agua"
         },
         "data_description": {
           "unit_system": "Unidades de los botones de dispensado rápido, la cantidad a dispensar, el sensor del último dispensado y la unidad predeterminada de la acción dispensar.",
-          "max_run_minutes": "Apaga el agua esta cantidad de minutos después de encenderla desde Home Assistant, salvo que se haya apagado antes. 0 desactiva el límite.",
-          "push_updates": "Escucha el canal en tiempo real de Kohler, como la app Konnect, y actualiza en cuanto cambia la llave. Agrega una entrada de Home Assistant a los dispositivos de notificación de tu cuenta Kohler. El sondeo sigue como respaldo."
+          "max_run_minutes": "Apaga el agua esta cantidad de minutos después de encenderla desde Home Assistant, salvo que se haya apagado antes. 0 desactiva el límite."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Progreso del dispensado",
+        "name": "Descarga de firmware",
         "state": {
-          "not_started": "Sin iniciar"
+          "not_started": "Sin iniciar",
+          "downloading": "Descargando",
+          "completed": "Completada"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} no tiene conexión: la nube de Kohler no llega a la llave. Revisa su alimentación y Wi-Fi."
     },
+    "handle_closed": {
+      "message": "La manija de {name} está cerrada. Abre la manija para dispensar agua a distancia."
+    },
+    "firmware_updating": {
+      "message": "{name} está instalando una actualización de firmware. Vuelve a intentarlo cuando termine."
+    },
+    "not_dispensed": {
+      "message": "Kohler no pudo dispensar agua de {name}. Abre la llave manualmente."
+    },
+    "command_forbidden": {
+      "message": "Kohler rechazó el comando para {name} con este inicio de sesión. Busca una actualización de esta integración."
+    },
     "rate_limited": {
       "message": "Kohler está limitando las solicitudes. Inténtalo de nuevo en {seconds} segundos."
     },
     "preset_out_of_range": {
-      "message": "El preajuste \"{title}\" está fuera del rango de 10 mL a 4 L."
+      "message": "El preajuste \"{title}\" está fuera del rango de 10 mL a 11.36 L (3 galones)."
     },
     "preset_not_found": {
       "message": "{name} no tiene ningún preajuste llamado \"{preset}\". Sus preajustes: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Cantidad",
-          "description": "Cuánta agua dispensar, en la unidad elegida (entre 10 mL y 4 L)."
+          "description": "Cuánta agua dispensar, en la unidad elegida (entre 10 mL y 11.36 L, o 3 galones)."
         },
         "unit": {
           "name": "Unidad",

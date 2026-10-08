@@ -224,7 +224,9 @@ async def test_leak_and_dispensing_sensors(
     hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
 ) -> None:
     kohler.config["leakDetectionHistory"] = [{"time": "2026-10-01T00:00:00Z"}]
-    kohler.state["progress"] = "DispenseInProgress"
+    # "progress" is the firmware download; an update's status must never
+    # read as running water.
+    kohler.state["progress"] = "ConnectedDeviceOTAInProgress"
     kohler.state["quantity"] = 0.5
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
@@ -232,7 +234,7 @@ async def test_leak_and_dispensing_sensors(
     leak = hass.states.get("binary_sensor.kitchen_leak")
     assert leak.state == "on"
     assert leak.attributes["events"] == 1
-    # Not the Sensate's own way, but kept for firmware that reports progress.
-    assert hass.states.get("binary_sensor.kitchen_dispensing").state == "on"
+    assert hass.states.get("binary_sensor.kitchen_dispensing").state == "off"
+    assert hass.states.get("switch.kitchen_water").state == "off"
     # A dispense started outside Home Assistant is picked up from the state.
     assert hass.states.get("sensor.kitchen_last_dispensed").state == "500.0"

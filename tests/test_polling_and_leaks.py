@@ -9,6 +9,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
@@ -19,7 +20,9 @@ from custom_components.kohler_sensate.const import (
     SCAN_INTERVAL_ACTIVE,
     SCAN_INTERVAL_IDLE,
     STORAGE_KEY,
+    STORAGE_VERSION,
 )
+from custom_components.kohler_sensate.coordinator import leak_fingerprint, leak_key
 
 from .conftest import DEVICE_ID, FakeKohler
 
@@ -203,3 +206,81 @@ async def test_removing_entry_deletes_stored_leaks(
     await hass.config_entries.async_remove(config_entry.entry_id)
     await hass.async_block_till_done()
     assert key not in hass_storage
+
+
+# Kohler's leak events, as the Konnect app reads them: epoch seconds.
+def _leak(seconds_ago: float) -> dict[str, Any]:
+    return {"leakDetectionTime": int(dt_util.utcnow().timestamp() - seconds_ago)}
+
+
+def test_leak_keys() -> None:
+    """One second apart is a different leak; extra fields are the same one."""
+    first = {"leakDetectionTime": 1791463790}
+    assert leak_key(first) != leak_key({"leakDetectionTime": 1791463791})
+    assert leak_key({**first, "status": "Resolved"}) == leak_key(first)
+    # Events of another shape keep the key older versions used.
+    assert leak_key({"id": "leak-1"}) == leak_fingerprint({"id": "leak-1"})
+
+
+async def test_leaks_cleared_before_upgrading_stay_cleared(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    config_entry: MockConfigEntry,
+    kohler: FakeKohler,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """Events cleared by older versions were keyed by a hash of the event."""
+    old = _leak(86400)
+    kohler.config["leakDetectionHistory"] = [old]
+    key = STORAGE_KEY.format(entry_id=config_entry.entry_id)
+    hass_storage[key] = {
+        "version": STORAGE_VERSION,
+        "minor_version": 1,
+        "key": key,
+        "data": {"cleared_leaks": [leak_fingerprint(old)], "push_identity": None},
+    }
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    assert hass.states.get(LEAK).state == "off"
+
+    kohler.config["leakDetectionHistory"].append(_leak(0))
+    await _refresh_config(hass, freezer)
+    assert hass.states.get(LEAK).state == "on"
+
+
+async def test_leak_reported_late_stays_cleared(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    kohler: FakeKohler,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A leak detected before "Clear leak alert" but listed after it is cleared."""
+    kohler.config["leakDetectionHistory"] = [_leak(600)]
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await _press(hass, CLEAR)
+    detected_before_clearing = _leak(60)
+
+    kohler.config["leakDetectionHistory"].append(detected_before_clearing)
+    await _refresh_config(hass, freezer)
+    assert hass.states.get(LEAK).state == "off"
+
+    kohler.config["leakDetectionHistory"].append(_leak(0))  # detected since
+    await _refresh_config(hass, freezer)
+    state = hass.states.get(LEAK)
+    assert state.state == "on"
+    assert state.attributes["uncleared_events"] == 1
+
+
+async def test_leak_attributes(
+    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
+) -> None:
+    newest, older = _leak(60), _leak(86400)
+    # Kohler's order isn't the app's: it sorts by time itself.
+    kohler.config["leakDetectionHistory"] = [newest, older]
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+
+    state = hass.states.get(LEAK)
+    assert state.attributes["latest"] == newest
+    assert (
+        state.attributes["last_detected"]
+        == dt_util.utc_from_timestamp(newest["leakDetectionTime"]).isoformat()
+    )

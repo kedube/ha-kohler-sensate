@@ -64,13 +64,11 @@
         "title": "Kohler Sensate-opties",
         "data": {
           "unit_system": "Eenheden",
-          "max_run_minutes": "Waterveiligheidslimiet",
-          "push_updates": "Directe updates"
+          "max_run_minutes": "Waterveiligheidslimiet"
         },
         "data_description": {
           "unit_system": "Eenheden voor de snelle doseerknoppen, de doseerhoeveelheid, de sensor voor de laatste dosering en de standaardeenheid van de doseeractie.",
-          "max_run_minutes": "Zet het water zoveel minuten nadat het vanuit Home Assistant is aangezet weer uit, tenzij het intussen al is uitgezet. 0 schakelt de limiet uit.",
-          "push_updates": "Luistert net als de Konnect-app naar de realtimefeed van Kohler en werkt bij zodra de kraan verandert. Voegt een Home Assistant-item toe aan de meldingsapparaten van je Kohler-account. Periodiek opvragen blijft actief als back-up."
+          "max_run_minutes": "Zet het water zoveel minuten nadat het vanuit Home Assistant is aangezet weer uit, tenzij het intussen al is uitgezet. 0 schakelt de limiet uit."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Doseervoortgang",
+        "name": "Firmwaredownload",
         "state": {
-          "not_started": "Niet gestart"
+          "not_started": "Niet gestart",
+          "downloading": "Bezig met downloaden",
+          "completed": "Voltooid"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} is offline: de Kohler-cloud kan de kraan niet bereiken. Controleer de stroomvoorziening en wifi."
     },
+    "handle_closed": {
+      "message": "De hendel van {name} is dicht. Open de hendel om op afstand water te doseren."
+    },
+    "firmware_updating": {
+      "message": "{name} installeert een firmware-update. Probeer het opnieuw als die klaar is."
+    },
+    "not_dispensed": {
+      "message": "Kohler kon geen water doseren uit {name}. Zet de kraan met de hand open."
+    },
+    "command_forbidden": {
+      "message": "Kohler heeft de opdracht voor {name} met deze aanmelding geweigerd. Kijk of er een update van deze integratie is."
+    },
     "rate_limited": {
       "message": "Kohler beperkt het aantal verzoeken. Probeer het over {seconds} seconden opnieuw."
     },
     "preset_out_of_range": {
-      "message": "De voorinstelling \"{title}\" valt buiten het doseerbereik van 10 mL tot 4 L."
+      "message": "De voorinstelling \"{title}\" valt buiten het doseerbereik van 10 mL tot 11,36 L (3 gallon)."
     },
     "preset_not_found": {
       "message": "{name} heeft geen voorinstelling met de naam \"{preset}\". Beschikbare voorinstellingen: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Hoeveelheid",
-          "description": "Hoeveel water er moet worden gedoseerd, in de gekozen eenheid (tussen 10 mL en 4 L)."
+          "description": "Hoeveel water er moet worden gedoseerd, in de gekozen eenheid (tussen 10 mL en 11,36 L, oftewel 3 gallon)."
         },
         "unit": {
           "name": "Eenheid",

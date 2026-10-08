@@ -81,20 +81,39 @@ async def test_imperial_default_unit(
 
 
 @pytest.mark.parametrize(
-    ("data", "message"),
+    ("data", "limits"),
     [
-        ({"amount": 5}, "between 10 and 4e+03 mL"),
-        ({"amount": 2, "unit": "gal"}, "between 0.00264 and 1.06 gal"),
-        ({"amount_l": 4.5}, "between 0.01 and 4 L"),
+        ({"amount": 5}, ("10", "11360", "mL")),
+        ({"amount": 3.1, "unit": "gal"}, ("0.002642", "3", "gal")),
+        ({"amount": 49, "unit": "cup"}, ("0.04227", "48.01", "cups")),
+        ({"amount_l": 11.4}, ("0.01", "11.36", "L")),
     ],
 )
 async def test_dispense_out_of_range(
-    hass: HomeAssistant, setup_entry: MockConfigEntry, kohler: FakeKohler, data, message
+    hass: HomeAssistant, setup_entry: MockConfigEntry, kohler: FakeKohler, data, limits
 ) -> None:
     with pytest.raises(ServiceValidationError) as err:
         await _dispense(hass, **data)
     assert err.value.translation_key == "amount_out_of_range"
+    # Rounded inward and without exponents: every amount stated is accepted.
+    placeholders = err.value.translation_placeholders
+    assert (placeholders["min"], placeholders["max"], placeholders["unit"]) == limits
     assert kohler.commands == []
+
+
+@pytest.mark.parametrize(
+    ("data", "liters"),
+    [
+        ({"amount": 3, "unit": "gal"}, 11.3562),  # the Konnect app's largest
+        ({"amount": 48, "unit": "cup"}, 11.3562),
+        ({"amount": 5, "unit": "l"}, 5.0),
+    ],
+)
+async def test_dispense_up_to_three_gallons(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, kohler: FakeKohler, data, liters
+) -> None:
+    await _dispense(hass, **data)
+    assert _quantities(kohler) == [(DEVICE_ID, liters)]
 
 
 @pytest.mark.parametrize(

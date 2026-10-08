@@ -15,7 +15,12 @@ from homeassistant.const import UnitOfVolume
 from homeassistant.core import HomeAssistant
 from homeassistant.util.unit_system import US_CUSTOMARY_SYSTEM
 
-from .const import CONF_UNIT_SYSTEM, UNIT_SYSTEM_IMPERIAL, UNIT_SYSTEM_METRIC
+from .const import (
+    CONF_UNIT_SYSTEM,
+    DISPENSE_MAX_ML,
+    UNIT_SYSTEM_IMPERIAL,
+    UNIT_SYSTEM_METRIC,
+)
 
 # Units accepted by the ``dispense`` action, in milliliters per unit. The US
 # customary factors match the ones the Konnect app uses.
@@ -104,7 +109,7 @@ METRIC = UnitProfile(
     number_unit="ml",
     number_native_unit=UnitOfVolume.MILLILITERS,
     number_min=10,
-    number_max=4000,
+    number_max=DISPENSE_MAX_ML,
     number_step=10,
     number_default=250,
     precision=0,
@@ -117,7 +122,7 @@ IMPERIAL = UnitProfile(
     number_unit="fl_oz",
     number_native_unit=UnitOfVolume.FLUID_OUNCES,
     number_min=0.5,
-    number_max=135,  # ≈ 3.99 L, just under the 4 L cap
+    number_max=384,  # 3 gallons, the Konnect app's largest amount
     number_step=0.5,
     number_default=8,
     precision=1,

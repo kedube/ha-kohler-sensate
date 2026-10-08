@@ -10,10 +10,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import pytest
 
 from custom_components.kohler_sensate.api import (
+    FirmwareInfo,
     SensateApi,
     SensateApiError,
     SensateAuthError,
     decode_tenant_id,
+    parse_display_quantity,
+    parse_firmware,
 )
 from custom_components.kohler_sensate.const import AUTH_SCOPE, CLIENT_ID
 
@@ -193,6 +196,118 @@ async def test_get_faucets_filters_by_sku(api: SensateApi) -> None:
     assert [(f.device_id, f.name) for f in faucets] == [(DEVICE_ID, "Kitchen")]
 
 
+async def test_get_faucets_includes_both_konnect_faucets(
+    api: SensateApi, kohler: FakeKohler
+) -> None:
+    kohler.devices += [
+        {"deviceId": "set-1", "sku": "SET", "logicalName": "Bar"},
+        # Not a Kohler SKU; the app has no such device.
+        {"deviceId": "faucet-1", "sku": "FAUCET", "logicalName": "Other"},
+    ]
+    faucets = await api.async_get_faucets()
+    assert [(f.device_id, f.sku) for f in faucets] == [
+        (DEVICE_ID, "SEN"),
+        ("set-1", "SET"),
+    ]
+
+
+async def test_commands_send_the_device_sku(
+    api: SensateApi, kohler: FakeKohler
+) -> None:
+    await api.async_dispense("set-1", 0.25, "SET")
+    await api.async_set_water("set-1", False, "SET")
+    assert [body["sku"] for _, body in kohler.commands] == ["SET", "SET"]
+
+
+@pytest.mark.parametrize("code", ["906", 906, "900", " 903 "])
+async def test_command_refused_in_a_200_reply(
+    api: SensateApi, kohler: FakeKohler, code: object
+) -> None:
+    """HTTP 200 with a failure statusCode means the command did nothing."""
+    kohler.fail_api("/faucet/dispense", (200, {"statusCode": code, "message": "x"}))
+    with pytest.raises(SensateApiError) as err:
+        await api.async_dispense(DEVICE_ID, 0.25)
+    assert err.value.code == str(code).strip()
+    assert err.value.status == 200
+
+
+async def test_command_refusal_is_explained(
+    api: SensateApi, kohler: FakeKohler
+) -> None:
+    kohler.fail_api(
+        "/faucet/dispense",
+        (400, {"statusCode": "906", "message": "Something went wrong"}),
+    )
+    with pytest.raises(SensateApiError) as err:
+        await api.async_dispense(DEVICE_ID, 0.25)
+    assert err.value.code == "906"
+    assert "water could not be dispensed (statusCode 906)" in str(err.value)
+
+
+async def test_harmless_codes_and_reads_are_not_refusals(
+    api: SensateApi, kohler: FakeKohler
+) -> None:
+    kohler.fail_api("/faucet/onoff", (200, {"statusCode": "200", "correlationId": "c"}))
+    await api.async_set_water(DEVICE_ID, False)
+    # Reads are taken as they come, whatever their body says.
+    kohler.fail_api(
+        f"/faucet-state/{DEVICE_ID}",
+        (200, {"statusCode": "900", "state": {"status": "Off"}}),
+    )
+    assert (await api.async_get_state(DEVICE_ID)).state == {"status": "Off"}
+
+
+async def test_state_reports_the_sku(api: SensateApi, kohler: FakeKohler) -> None:
+    kohler.state_sku = "set"
+    assert (await api.async_get_state(DEVICE_ID)).sku == "SET"
+    kohler.state_sku = None
+    assert (await api.async_get_state(DEVICE_ID)).sku is None
+
+
+async def test_unregister_push(api: SensateApi, kohler: FakeKohler) -> None:
+    await api.async_unregister_push("ha-identity")
+    assert kohler.unregistered == ["ha-identity"]
+
+
+@pytest.mark.parametrize(
+    ("text", "liters"),
+    [
+        ("750 Milliliters", 0.75),
+        ("¾ Liters", 0.75),
+        ("1¾ Quarts", 1.75 * 0.946353),
+        ("1 Cups", 0.2365880012512207),
+        ("3 Gallons", 3 * 3.785411784),
+        ("1.5 liters", 1.5),
+        ("Cups", None),
+        ("0 Liters", None),
+        ("2 Pints", None),
+        (None, None),
+    ],
+)
+def test_parse_display_quantity(text: object, liters: float | None) -> None:
+    assert parse_display_quantity(text) == (
+        pytest.approx(liters) if liters is not None else None
+    )
+
+
+def test_parse_firmware() -> None:
+    assert parse_firmware(
+        {
+            "firmwareUpdateAvailable": True,
+            "firmware": "17.1",
+            "currentFirmware": 16.0,
+            "mandatoryUpdate": True,
+            "otaStatus": "NotStarted",
+        }
+    ) == FirmwareInfo(available=True, latest="17.1", current="16.0", mandatory=True)
+    assert parse_firmware({"firmwareUpdateAvailable": False, "firmware": ""}) == (
+        FirmwareInfo(available=False, latest=None, current=None, mandatory=False)
+    )
+    # Without a clear yes or no, the answer is unknown.
+    assert parse_firmware({"firmwareUpdateAvailable": "true"}) is None
+    assert parse_firmware(["junk"]) is None
+
+
 async def test_commands(api: SensateApi, kohler: FakeKohler) -> None:
     await api.async_dispense(DEVICE_ID, 0.236588237)
     await api.async_set_water(DEVICE_ID, True)
@@ -235,6 +350,7 @@ async def test_secrets_never_logged(
     caplog.set_level(logging.DEBUG)
     await api.async_get_faucets()
     await api.async_dispense(DEVICE_ID, 0.25)
+    await api.async_unregister_push("ha-identity")
     _expire(api)
     kohler.token_queue.append((400, {"error": "invalid_grant"}))
     await api.async_get_state(DEVICE_ID)

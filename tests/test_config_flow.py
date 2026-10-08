@@ -15,7 +15,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.kohler_sensate.const import (
     CONF_DEVICE_ID,
     CONF_MAX_RUN_MINUTES,
-    CONF_PUSH_UPDATES,
+    CONF_SKU,
     CONF_UNIT_SYSTEM,
     DOMAIN,
     UNIT_SYSTEM_IMPERIAL,
@@ -47,6 +47,7 @@ async def test_user_flow(hass: HomeAssistant, kohler: FakeKohler) -> None:
         CONF_USERNAME: USERNAME,  # whitespace trimmed
         CONF_PASSWORD: PASSWORD,
         CONF_DEVICE_ID: DEVICE_ID,
+        CONF_SKU: "SEN",
     }
     assert result["options"] == {CONF_UNIT_SYSTEM: UNIT_SYSTEM_METRIC}
 
@@ -219,7 +220,6 @@ async def test_options_flow_switches_units(
     assert setup_entry.options == {
         CONF_UNIT_SYSTEM: UNIT_SYSTEM_IMPERIAL,
         CONF_MAX_RUN_MINUTES: 10,
-        CONF_PUSH_UPDATES: False,
     }
     # The entry reloaded with imperial buttons and dropped the metric ones.
     assert hass.states.get("button.kitchen_dispense_1_cup") is not None

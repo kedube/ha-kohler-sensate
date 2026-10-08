@@ -15,10 +15,13 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.kohler_sensate.const import (
+    CONFIG_REFRESH_INTERVAL,
     DISPENSE_MAX,
+    DOMAIN,
     SCAN_INTERVAL_ACTIVE,
     SCAN_INTERVAL_PUSH_ACTIVE,
 )
+from custom_components.kohler_sensate.coordinator import dispense_limit
 from custom_components.kohler_sensate.push import FaucetEvent, parse_event
 
 from .conftest import (
@@ -61,11 +64,21 @@ def _event(message: dict) -> FaucetEvent | None:
 def test_parse_event() -> None:
     assert _event(water_message("On")) == FaucetEvent(status="On", handle="OPEN")
     assert _event(preset_message("Tea", "ON")) == FaucetEvent(
-        preset="Tea", preset_on=True
+        preset="Tea", preset_id="exp-1", preset_on=True
     )
     assert _event(preset_message("Tea", "OFF")) == FaucetEvent(
-        preset="Tea", preset_on=False
+        preset="Tea", preset_id="exp-1", preset_on=False
     )
+    # Like the app, anything but "OFF" means the preset is running.
+    assert _event(preset_message("Tea", "Started")).preset_on is True
+    assert _event(feed_message("SENSATE_LEAK_DETECTED_ALT")) == FaucetEvent(leak=True)
+    # The app checks only the code of a leak alert.
+    assert _event({"data": {"code": "SENSATE_LEAK_DETECTED_ALT"}}) == FaucetEvent(
+        leak=True
+    )
+    assert _event(
+        feed_message("INSTALL_FIRMWARE_STS", status="Installed", version="17.0")
+    ) == FaucetEvent(firmware="Installed")
     assert _event(feed_message("FirmwareUpdate", version="17.0")) is None
     assert _event({"data": {"attributes": "junk"}}) is None
     assert parse_event(b"not json") is None
@@ -153,9 +166,48 @@ async def test_gives_up_if_the_end_never_arrives(
     push_entry: MockConfigEntry,
     kohler: FakeKohler,
 ) -> None:
+    kohler.presets = [
+        {"experienceId": "exp-1", "title": "One Cup", "dispenseAmount": 0.236588}
+    ]
+    await _advance(hass, freezer, CONFIG_REFRESH_INTERVAL)
     await _deliver(hass, freezer, preset_message("One Cup", "ON"))
     await _advance(hass, freezer, DISPENSE_MAX - timedelta(seconds=5))
     assert hass.states.get(DISPENSING).state == "on"
-    # Not left on until the next poll, minutes later.
-    await _advance(hass, freezer, timedelta(seconds=5))
+    # Not left on until the next poll, minutes later: a second past the limit.
+    await _advance(hass, freezer, timedelta(seconds=6))
+    assert hass.states.get(DISPENSING).state == "off"
+
+
+async def test_unknown_preset_allows_for_the_largest_amount(
+    freezer: FrozenDateTimeFactory,
+    hass: HomeAssistant,
+    push_entry: MockConfigEntry,
+    kohler: FakeKohler,
+) -> None:
+    """A preset the integration hasn't read yet may be up to 3 gallons."""
+    limit = timedelta(seconds=dispense_limit(None))
+    assert limit > DISPENSE_MAX
+    await _deliver(hass, freezer, preset_message("New Preset", "ON"))
+    await _advance(hass, freezer, limit - timedelta(seconds=5))
+    assert hass.states.get(DISPENSING).state == "on"
+    await _advance(hass, freezer, timedelta(seconds=6))
+    assert hass.states.get(DISPENSING).state == "off"
+
+
+async def test_large_dispense_lasts_longer(
+    freezer: FrozenDateTimeFactory,
+    hass: HomeAssistant,
+    push_entry: MockConfigEntry,
+    kohler: FakeKohler,
+) -> None:
+    """Ten liters take longer than two minutes, even at full flow."""
+    await hass.services.async_call(
+        DOMAIN, "dispense", {"amount": 10, "unit": "l"}, blocking=True
+    )
+    await _deliver(hass, freezer, water_message("On"))
+    await _advance(hass, freezer, DISPENSE_MAX + timedelta(seconds=30))
+    assert hass.states.get(DISPENSING).state == "on"
+    await _advance(
+        hass, freezer, timedelta(seconds=dispense_limit(10) + 1) - DISPENSE_MAX
+    )
     assert hass.states.get(DISPENSING).state == "off"

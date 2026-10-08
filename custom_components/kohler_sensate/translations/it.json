@@ -64,13 +64,11 @@
         "title": "Opzioni Kohler Sensate",
         "data": {
           "unit_system": "Unità",
-          "max_run_minutes": "Limite di sicurezza dell'acqua",
-          "push_updates": "Aggiornamenti istantanei"
+          "max_run_minutes": "Limite di sicurezza dell'acqua"
         },
         "data_description": {
           "unit_system": "Unità per i pulsanti di erogazione rapida, la quantità da erogare, il sensore dell'ultima erogazione e l'unità predefinita dell'azione di erogazione.",
-          "max_run_minutes": "Chiude l'acqua questo numero di minuti dopo che è stata aperta da Home Assistant, a meno che nel frattempo non sia già stata chiusa. 0 disattiva il limite.",
-          "push_updates": "Ascolta il flusso in tempo reale di Kohler, come fa l'app Konnect, e aggiorna non appena il rubinetto cambia. Aggiunge una voce Home Assistant ai dispositivi di notifica del tuo account Kohler. L'interrogazione periodica continua come riserva."
+          "max_run_minutes": "Chiude l'acqua questo numero di minuti dopo che è stata aperta da Home Assistant, a meno che nel frattempo non sia già stata chiusa. 0 disattiva il limite."
         }
       }
     }
@@ -159,9 +157,11 @@
         }
       },
       "progress": {
-        "name": "Avanzamento erogazione",
+        "name": "Download del firmware",
         "state": {
-          "not_started": "Non avviato"
+          "not_started": "Non avviato",
+          "downloading": "Download in corso",
+          "completed": "Completato"
         }
       },
       "handle_state": {
@@ -212,11 +212,23 @@
     "faucet_offline": {
       "message": "{name} è offline: il cloud Kohler non riesce a raggiungere il rubinetto. Controlla l'alimentazione e il Wi-Fi."
     },
+    "handle_closed": {
+      "message": "La leva di {name} è chiusa. Apri la leva per erogare acqua da remoto."
+    },
+    "firmware_updating": {
+      "message": "{name} sta installando un aggiornamento del firmware. Riprova quando è terminato."
+    },
+    "not_dispensed": {
+      "message": "Kohler non è riuscita a erogare acqua da {name}. Apri il rubinetto a mano."
+    },
+    "command_forbidden": {
+      "message": "Kohler ha rifiutato il comando per {name} con questo accesso. Controlla se è disponibile un aggiornamento di questa integrazione."
+    },
     "rate_limited": {
       "message": "Kohler sta limitando le richieste. Riprova tra {seconds} secondi."
     },
     "preset_out_of_range": {
-      "message": "La preimpostazione \"{title}\" è fuori dall'intervallo di erogazione da 10 mL a 4 L."
+      "message": "La preimpostazione \"{title}\" è fuori dall'intervallo di erogazione da 10 mL a 11,36 L (3 galloni)."
     },
     "preset_not_found": {
       "message": "{name} non ha nessuna preimpostazione chiamata \"{preset}\". Preimpostazioni disponibili: {presets}."
@@ -233,7 +245,7 @@
         },
         "amount": {
           "name": "Quantità",
-          "description": "Quanta acqua erogare, nell'unità scelta (tra 10 mL e 4 L)."
+          "description": "Quanta acqua erogare, nell'unità scelta (tra 10 mL e 11,36 L, ovvero 3 galloni)."
         },
         "unit": {
           "name": "Unità",

@@ -18,7 +18,7 @@ from .conftest import FakeKohler
 
 STATUS = "sensor.kitchen_status"
 HANDLE = "sensor.kitchen_handle"
-PROGRESS = "sensor.kitchen_dispense_progress"
+PROGRESS = "sensor.kitchen_firmware_download"
 
 
 @pytest.mark.parametrize(
@@ -48,7 +48,8 @@ async def test_translated_states(
     assert status.attributes["device_class"] == "enum"
     assert status.attributes["options"] == ["off", "on"]
     assert hass.states.get(HANDLE).state == "closed"
-    # The Sensate never moves progress off "NotStarted", so it starts disabled.
+    # The firmware download sits at "NotStarted" between updates, so it
+    # starts disabled.
     entry = er.async_get(hass).async_get(PROGRESS)
     assert entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
 

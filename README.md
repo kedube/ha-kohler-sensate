@@ -6,7 +6,9 @@
 [![CI](https://github.com/kedube/ha-kohler-sensate/actions/workflows/ci.yml/badge.svg)](https://github.com/kedube/ha-kohler-sensate/actions/workflows/ci.yml)
 
 Unofficial Home Assistant integration for the **Kohler Sensate** touchless
-kitchen faucet with Konnect (SKU `SEN`). Its headline feature is **dispensing
+kitchen faucet with Konnect (SKU `SEN`). Konnect faucets with SKU `SET`
+(probably the Setra), which the Konnect app handles exactly like the Sensate,
+are found too, but haven't been tried. Its headline feature is **dispensing
 a measured amount of water**, in metric or imperial units, from dashboards,
 automations, scripts and voice assistants. It also turns the water on and off
 and reports the faucet's status and leak alerts.
@@ -37,7 +39,8 @@ directly, signing in with your normal Konnect email and password.
   currently dispensing (including presets run from the app), connection, and
   firmware updates.
 - **Leak alerts you can clear**: acknowledge a leak once it's dealt with; a
-  new leak turns the alert back on.
+  new leak turns the alert back on. Kohler's real-time leak alert shows at
+  once.
 - **Water safety limit**: water turned on from Home Assistant turns off by
   itself after 10 minutes (adjustable), even across restarts.
 - **Offline detection**: when the faucet loses its connection, its entities
@@ -121,7 +124,6 @@ Go to **Settings → Devices & services → Kohler Sensate → Configure**:
 | --------------------------------- | ------------------------ | ----------- |
 | Units                             | Home Assistant's system  | Metric or imperial, for dispensing (see below). |
 | Water safety limit                | 10 minutes               | Turns the water off this long after it was turned on from Home Assistant, unless it was turned off in the meantime. `0` turns the limit off. |
-| Instant updates                   | On                       | See [Instant updates](#instant-updates). |
 
 #### Units
 
@@ -150,10 +152,10 @@ faucet's name; the examples are for a faucet named *Kitchen*.
 | Water used today | `sensor.kitchen_water_used_today` | L or gal | Every 30 min | Water used today, the same figure as the Konnect app's daily chart. Starts over at midnight. |
 | Last dispensed | `sensor.kitchen_last_dispensed` | mL or fl oz | Each dispense | The most recent amount dispensed from Home Assistant: a button, a preset or the action. Kept across restarts. Kohler doesn't report amounts, so dispenses started elsewhere aren't included. |
 | Handle | `sensor.kitchen_handle` | `open` or `closed` | Live | Diagnostic. Position of the manual handle. |
-| Dispense progress | `sensor.kitchen_dispense_progress` | `not_started` | Live | Diagnostic, disabled by default. Kohler's progress field, which the Sensate never moves, even mid-dispense. Use *Dispensing* instead. |
+| Firmware download | `sensor.kitchen_firmware_download` | `not_started`, `downloading`, `completed` | Live | Diagnostic, disabled by default. Kohler's `progress` field, which follows a firmware download, not the water. Use *Dispensing* for dispenses. Faucets added before 0.10 keep the entity ID `sensor.kitchen_dispense_progress`. |
 
-*Live* means within a second or two with [instant updates](#instant-updates),
-otherwise within 30 seconds. Water usage is also read about 2 minutes after
+*Live* means within a second or two through [instant updates](#instant-updates),
+or within 30 seconds while the feed is down. Water usage is also read about 2 minutes after
 the water stops, and just after midnight. *Status* and *Handle* show their
 states in your language; automations and templates use the values above.
 
@@ -161,17 +163,17 @@ states in your language; automations and templates use the values above.
 
 | Binary sensor | Entity ID | On when | Updates | Attributes |
 | ------------- | --------- | ------- | ------- | ---------- |
-| Leak | `binary_sensor.kitchen_leak` | Kohler reports a leak that hasn't been cleared with *Clear leak alert*. | Every 5 min | `events`: leak events in Kohler's history. `uncleared_events`: those not cleared yet. `latest`: the newest event. |
-| Dispensing | `binary_sensor.kitchen_dispensing` | A measured amount is dispensing: from Home Assistant, or a preset run from the Konnect app (needs instant updates). Turns off when the water stops, or after 2 minutes at most. | Live | `preset`: the preset's name, when it's a preset. |
+| Leak | `binary_sensor.kitchen_leak` | Kohler reports a leak that hasn't been cleared with *Clear leak alert*. | Live (Kohler's real-time leak alert); the history every 5 min | `events`: leak events in Kohler's history. `uncleared_events`: those not cleared yet. `latest`: the newest event. `last_detected`: when the most recent leak was detected. |
+| Dispensing | `binary_sensor.kitchen_dispensing` | A measured amount is dispensing: from Home Assistant, or a preset run from the Konnect app. Turns off when the water stops, or, if that's never reported, after 2 minutes (longer for amounts over 3 L, allowing for slow flow). | Live | `preset`: the preset's name, when it's a preset. |
 | Connected | `binary_sensor.kitchen_connected` | Kohler's cloud can reach the faucet. Diagnostic. | Each poll | `last_connected`: when the faucet last connected, as Kohler reports it. |
 
 ### Controls
 
 | Control | Entity ID | Type | Description |
 | ------- | --------- | ---- | ----------- |
-| Water | `switch.kitchen_water` | Switch | Turns the water on or off. Water turned on here turns off by itself after the [water safety limit](#options). |
+| Water | `switch.kitchen_water` | Switch | Turns the water on or off. Water turned on here turns off by itself after the [water safety limit](#options). Like the Konnect app, it won't turn the water on while the handle is closed or firmware is downloading; turning it off always works. |
 | Dispense *amount* | `button.kitchen_dispense_250_ml`, … | Button (7) | Dispenses a fixed amount. The amounts follow the [units](#units) option. |
-| Dispense amount | `number.kitchen_dispense_amount` | Number (configuration) | How much *Dispense set amount* pours: 10–4000 mL or 0.5–135 fl oz. Kept across restarts. |
+| Dispense amount | `number.kitchen_dispense_amount` | Number (configuration) | How much *Dispense set amount* pours: 10–11360 mL or 0.5–384 fl oz (3 gallons). Kept across restarts. |
 | Dispense set amount | `button.kitchen_dispense_set_amount` | Button | Dispenses the *Dispense amount*. |
 | Preset | `select.kitchen_preset` | Select (configuration) | Which preset saved in the Konnect app *Dispense preset* pours. Attributes: `amount` and `unit`. See [Konnect presets](#konnect-presets). |
 | Dispense preset | `button.kitchen_dispense_preset` | Button | Dispenses the chosen *Preset*. |
@@ -197,7 +199,7 @@ entities:
 
 | Update | Entity ID | On when | Description |
 | ------ | --------- | ------- | ----------- |
-| Firmware | `update.kitchen_firmware` | Kohler has newer firmware than the faucet's. | Diagnostic. Installed and latest versions, checked every 5 minutes. Install updates from the Konnect app; Home Assistant shows when one is in progress. |
+| Firmware | `update.kitchen_firmware` | Kohler's firmware check, the one the Konnect app uses, offers newer firmware. | Diagnostic. Installed and latest versions, checked every hour and after an install. Install updates from the Konnect app; Home Assistant shows when one is downloading or installing. |
 
 While *Connected* is off, entities that show or control the live faucet are
 unavailable. *Leak*, *Clear leak alert*, *Dispense amount*, *Preset*,
@@ -208,7 +210,8 @@ unavailable. *Leak*, *Clear leak alert*, *Dispense amount*, *Preset*,
 ### `kohler_sensate.dispense`
 
 Dispenses a measured amount of water, or a preset saved in the Konnect app.
-Every dispense must be between 10 mL and 4 L.
+Every dispense must be between 10 mL and 11.36 L (3 gallons, the most the
+Konnect app pours).
 
 | Field       | Required | Description |
 | ----------- | -------- | ----------- |
@@ -283,8 +286,8 @@ automation:
 
 ## How data is updated
 
-With instant updates on (the default), the integration listens to Kohler's
-real-time feed and re-reads the faucet the moment it changes, whether from
+The integration listens to Kohler's real-time feed, as the Konnect app does,
+and re-reads the faucet the moment it changes, whether from
 Home Assistant, the Konnect app or by hand. It still polls Kohler's cloud as
 a safety net, adjusting how often to what the faucet is doing:
 
@@ -294,12 +297,13 @@ a safety net, adjusting how often to what the faucet is doing:
 | Water running, dispensing, or within 30 s of a command | Every 30 s    | Every 5 s    |
 | Kohler's cloud is unreachable                          | Every 30 s    | Every 30 s   |
 
-"Without it" covers instant updates being off, still connecting, reconnecting
-after a drop, or not yet trusted (see below).
+"Without it" covers the feed still connecting, reconnecting after a drop, or
+not yet trusted (see below).
 
-Firmware and leak history are checked every 5 minutes, and whenever the feed
-reports a change, so a leak shows up within about 5 minutes of Kohler
-reporting it.
+Leak history is checked every 5 minutes, and whenever the feed reports a
+change. With the feed, Kohler's real-time leak alert turns *Leak* on at once;
+without it, a leak shows up within about 5 minutes of Kohler recording it.
+Kohler is asked about new firmware every hour.
 
 Water usage is read every 30 minutes, about 2 minutes after the water stops
 (once Kohler has counted it), and at the first poll after midnight, so
@@ -326,10 +330,21 @@ The feed has been confirmed with a Sensate on firmware 16.0. Kohler doesn't
 document it and could change it; if it stops working, nothing breaks, and
 polling carries on.
 
+Instant updates are always on, as in the Konnect app; there's no option to
+turn them off. Polling stays as the safety net even when the feed works: the
+feed doesn't report whether the faucet is online, leak history, firmware or
+water usage, and the Konnect app itself re-reads the faucet over HTTPS
+whenever it opens and whenever its feed is down.
+
 The connection adds a "HomeAssistant" entry to the notification devices on
-your Kohler account. To rely on polling alone, turn off **Instant updates**
-under **Configure**. **Download diagnostics** shows whether the feed is
-connected, how many messages it has received, and how many changes it missed.
+your Kohler account. Kohler's feed covers the whole account, so faucets on
+the same account share one connection and one entry. Deleting the last of
+them from Home Assistant removes the entry.
+
+**Download diagnostics** shows whether the feed is connected, how many
+messages it has received for the faucet, and how many changes it missed. If
+your network blocks outgoing connections on port 8883, the feed can't
+connect, and the integration works by polling alone.
 
 ### Konnect presets
 
@@ -347,6 +362,9 @@ amount using the same command as the other dispense buttons. The dropdown's
   on.
 - Presets added, renamed or deleted in the app show up within 5 minutes. A
   faucet without presets gets neither entity until the first one is saved.
+- Presets are read from the faucet's own list, as the app's faucet screen
+  reads them. If Kohler doesn't answer that, the account-wide list is used.
+  Diagnostics show which.
 
 In an automation or script, dispense a preset by name with the
 [`kohler_sensate.dispense`](#kohler_sensatedispense) action:
@@ -384,11 +402,15 @@ faucets show gallons; to change the unit, open the sensor's settings.
 - **Cloud only.** The faucet is controlled through Kohler's cloud, so it
   needs internet access and Kohler's service to be up.
 - **Unofficial API.** Kohler can change it at any time.
-- **Leak history.** Kohler keeps leak events in the faucet's history and
-  doesn't document their format, so the integration can't tell when a leak is
-  fixed. Press *Clear leak alert* once it is. If the faucet already had leak
-  events when you set up the integration, *Leak* starts on until you clear
-  it.
+- **Leak history.** Kohler keeps leak events, each with its detection time,
+  in the faucet's history and never marks one fixed, so the integration can't
+  tell when a leak is fixed. Press *Clear leak alert* once it is; that clears
+  every leak detected until then, even one Kohler lists later. If the faucet
+  already had leak events when you set up the integration, *Leak* starts on
+  until you clear it.
+- **Small amounts.** The Konnect app never pours less than 1 cup (about
+  236 mL). Smaller amounts, such as the 50 mL and ¼-cup buttons, are sent as
+  asked, but how accurately the faucet stops at them hasn't been measured.
 - **New status values.** If Kohler ever reports a status or handle value
   besides those above, the sensor shows it untranslated (for example
   `warming_up`) and the *Water* switch shows unknown. Diagnostics list every
@@ -414,6 +436,12 @@ faucets show gallons; to change the unit, open the sensor's settings.
   its API. Check for an update, or open an issue with diagnostics attached.
 - **Water turned off by itself**: the water safety limit did it. The log
   says so. Raise or turn off the limit in the options.
+- **Water won't turn on or dispense**: the error says why. As in the Konnect
+  app ("Open the handle to remote dispense water"), the handle must be open
+  for remote water, and nothing starts while firmware is downloading. If
+  Kohler answers that water couldn't be dispensed, the app's advice is to
+  turn the faucet on by hand. If Kohler refuses commands for this sign-in,
+  check for an update to this integration.
 - **Debug logs**: on the integration's page, select **⋮ → Enable debug
   logging**, reproduce the problem, then select **Disable debug logging** to
   download the log. Or add this to `configuration.yaml`:
@@ -437,8 +465,8 @@ faucets show gallons; to change the unit, open the sensor's settings.
 - Logs never contain your email, password, tokens, account ID or account
   details. Diagnostics redact them too.
 - The integration only talks to `konnectkohler.b2clogin.com` (sign-in) and
-  `api-kohler-us.kohler.io` (faucet) over HTTPS. With instant updates on, it
-  also connects over TLS to the Azure IoT Hub host Kohler assigns
+  `api-kohler-us.kohler.io` (faucet) over HTTPS, and over TLS (port 8883) to
+  the Azure IoT Hub host Kohler assigns for instant updates
   (`*.azure-devices.net`).
 - The client ID and API key in the source are public values built into the
   Konnect app, not secrets.
@@ -452,10 +480,31 @@ faucets show gallons; to change the unit, open the sensor's settings.
    `custom_components/kohler_sensate/`.
 3. Restart Home Assistant.
 
-Instant updates registered a "HomeAssistant" entry among your Kohler
-account's notification devices; deleting the faucet doesn't remove it.
+Deleting the last faucet on a Kohler account also removes the
+"HomeAssistant" entry that instant updates added to the account's
+notification devices. Faucets deleted before 0.10 left theirs behind.
 
 ## Upgrading
+
+### From 0.9
+
+- *Dispense progress* is now *Firmware download*: Kohler's `progress` field
+  turned out to follow firmware downloads. Its entity ID doesn't change.
+  *Dispensing* and *Water* no longer read it.
+- *Leak*'s `latest` attribute is the most recently detected event, whatever
+  order Kohler lists them in. Leaks you cleared before stay cleared.
+- Dispenses and presets can be up to 3 gallons (11.36 L), as in the Konnect
+  app, instead of 4 L.
+- Turning the water on or dispensing is refused while the handle is closed or
+  firmware is downloading, with a message saying so, instead of being sent to
+  Kohler.
+- With several faucets on one Kohler account, they now share one
+  instant-updates connection. The extra "HomeAssistant" entries earlier
+  versions added to the account are removed.
+- The **Instant updates** option is gone: they're always on, as in the
+  Konnect app, with polling as the safety net. A faucet that had it off now
+  connects, which adds a "HomeAssistant" entry to the Kohler account's
+  notification devices.
 
 ### From 0.7
 
@@ -495,7 +544,10 @@ See the [changelog](CHANGELOG.md) for the full list.
 
 ## Development
 
-- `PROTOCOL.md` documents the reverse-engineered Kohler cloud API.
+- `PROTOCOL.md` records what's been seen live from a Sensate. The full
+  protocol reference, from the Konnect app and shared with the Anthem
+  integration, is in
+  [ha-kohler-anthem/docs/protocol](https://github.com/kedube/ha-kohler-anthem/tree/main/docs/protocol).
 - `recon/` has the command-line tools used to explore it. They need
   `pip install kohler-anthem` and your credentials in `recon/.env`. Their
   captures contain personal data, so redact them before sharing.

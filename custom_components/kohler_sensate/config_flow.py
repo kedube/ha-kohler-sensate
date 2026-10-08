@@ -16,7 +16,6 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
-    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -34,10 +33,9 @@ from .api import SensateApi, SensateApiError, SensateAuthError, SensateDevice
 from .const import (
     CONF_DEVICE_ID,
     CONF_MAX_RUN_MINUTES,
-    CONF_PUSH_UPDATES,
+    CONF_SKU,
     CONF_UNIT_SYSTEM,
     DEFAULT_MAX_RUN_MINUTES,
-    DEFAULT_PUSH_UPDATES,
     DOMAIN,
     UNIT_SYSTEMS,
 )
@@ -85,6 +83,8 @@ class SensateConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Kohler Sensate."""
 
     VERSION = 1
+    # 1.2: the "Instant updates" option was removed.
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         self._credentials: dict[str, str] = {}
@@ -175,7 +175,11 @@ class SensateConfigFlow(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
         return self.async_create_entry(
             title=faucet.name,
-            data={**self._credentials, CONF_DEVICE_ID: faucet.device_id},
+            data={
+                **self._credentials,
+                CONF_DEVICE_ID: faucet.device_id,
+                CONF_SKU: faucet.sku,
+            },
             options={CONF_UNIT_SYSTEM: default_unit_system(self.hass)},
         )
 
@@ -213,7 +217,8 @@ class SensateConfigFlow(ConfigFlow, domain=DOMAIN):
             faucets = await self._async_fetch_faucets(user_input, errors)
             if faucets is not None:
                 device_id = entry.data.get(CONF_DEVICE_ID) or entry.unique_id
-                if all(f.device_id != device_id for f in faucets):
+                faucet = next((f for f in faucets if f.device_id == device_id), None)
+                if faucet is None:
                     return self.async_abort(reason="wrong_account")
                 return self.async_update_reload_and_abort(
                     entry,
@@ -221,6 +226,7 @@ class SensateConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_USERNAME: user_input[CONF_USERNAME],
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                         CONF_DEVICE_ID: device_id,
+                        CONF_SKU: faucet.sku,
                     },
                 )
 
@@ -233,7 +239,7 @@ class SensateConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class SensateOptionsFlow(OptionsFlowWithReload):
-    """Units, the water safety limit, and instant updates."""
+    """Units and the water safety limit."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -259,10 +265,6 @@ class SensateOptionsFlow(OptionsFlowWithReload):
                             CONF_MAX_RUN_MINUTES, DEFAULT_MAX_RUN_MINUTES
                         ),
                     ): MAX_RUN_SELECTOR,
-                    vol.Required(
-                        CONF_PUSH_UPDATES,
-                        default=options.get(CONF_PUSH_UPDATES, DEFAULT_PUSH_UPDATES),
-                    ): BooleanSelector(),
                 }
             ),
         )

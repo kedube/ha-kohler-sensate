@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Seed a Kohler B2C 'write' token so we can send commands to the faucet.
 
-Reads (state/usage) work with just your password. WRITES (dispense, on/off)
-need a token from Kohler's `B2C_1A_signin` sign-in policy — the same sign-in the
-mobile app does. Kohler only registered the app's own redirect URI (an
-`msauth://…` link a desktop browser can't open), so the flow is manual:
+The Sensate accepts writes (dispense, on/off) with the password sign-in the
+integration uses, so this is only a fallback. Anthem showers do need a token
+from Kohler's `B2C_1A_signin` sign-in policy — the same sign-in the mobile app
+does. Kohler only registered the app's own redirect URI
+(`msauth.com.kohler.hermoth://auth`, which a desktop browser can't open; the
+older `msauth://com.kohler.hermoth/…` is no longer registered and fails with
+AADB2C90006), so the flow is manual. The Anthem integration's `anthem/auth.py`
+drives the same policy without a browser.
 
   1. This script prints a Kohler sign-in URL.
   2. You open it in a browser and sign in with your Konnect account.
-  3. The browser tries to jump to `msauth://com.kohler.hermoth/...?code=...` and
+  3. The browser tries to jump to `msauth.com.kohler.hermoth://auth/?code=...` and
      shows a blank page / "can't open" — that's expected. Copy that WHOLE URL
      from the address bar.
   4. Paste it back here.
@@ -34,7 +38,8 @@ CLIENT_ID = "8caf9530-1d13-48e6-867c-0f082878debc"
 API_RESOURCE = "f5d87f3d-bdeb-4933-ab70-ef56cc343744"
 B2C_TENANT = "konnectkohler.onmicrosoft.com"
 B2C_AUTHORITY = f"https://konnectkohler.b2clogin.com/tfp/{B2C_TENANT}/B2C_1A_signin"
-REDIRECT_URI = "msauth://com.kohler.hermoth/2DuDM2vGmcL4bKPn2xKzKpsy68k%3D"
+REDIRECT_URI = "msauth.com.kohler.hermoth://auth"
+REDIRECT_PREFIX = "msauth.com.kohler.hermoth://"
 SCOPE = f"openid offline_access https://{B2C_TENANT}/{API_RESOURCE}/apiaccess"
 
 ENV_PATH = Path(__file__).parent / ".env"
@@ -88,13 +93,13 @@ async def main() -> int:
     print(url)
     print(
         "\n2) After signing in, the browser will try to open a page starting with"
-        "\n   'msauth://com.kohler.hermoth/...' and show a blank / 'cannot open'"
+        "\n   'msauth.com.kohler.hermoth://auth/...' and show a blank / 'cannot open'"
         "\n   page. That's expected. Copy the ENTIRE address from the address bar.\n"
     )
-    redirect = input("3) Paste the full msauth://... URL here: ").strip()
+    redirect = input(f"3) Paste the full {REDIRECT_PREFIX}... URL here: ").strip()
 
-    if not redirect.startswith("msauth://"):
-        print("ERROR: that doesn't start with msauth:// — try again.")
+    if not redirect.startswith(REDIRECT_PREFIX):
+        print(f"ERROR: that doesn't start with {REDIRECT_PREFIX} — try again.")
         return 2
     qs = urllib.parse.parse_qs(urllib.parse.urlparse(redirect).query)
     if "error" in qs:

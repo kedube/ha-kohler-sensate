@@ -23,7 +23,11 @@ from pytest_homeassistant_custom_component.common import (
     mock_restore_cache,
 )
 
-from custom_components.kohler_sensate.api import SensatePreset, parse_presets
+from custom_components.kohler_sensate.api import (
+    SensatePreset,
+    parse_faucet_experiences,
+    parse_presets,
+)
 from custom_components.kohler_sensate.const import CONFIG_REFRESH_INTERVAL, DOMAIN
 from custom_components.kohler_sensate.coordinator import preset_labels
 
@@ -110,6 +114,67 @@ def test_parse_presets() -> None:
     assert parse_presets(payload, DEVICE_ID) == [SensatePreset("p1", "Pasta pot", 3.0)]
     assert parse_presets({"sensateExperiences": None}, DEVICE_ID) == []
     assert parse_presets(None, DEVICE_ID) == []
+
+
+def test_parse_faucet_experiences() -> None:
+    def group(device: str, *items: object) -> dict[str, object]:
+        return {"deviceId": device, "sku": "SEN", "experience": list(items)}
+
+    mine = {"experienceId": "m", "title": "Mine", "dispenseAmount": 0.5}
+    other = {"experienceId": "o", "title": "Other", "dispenseAmount": 1.0}
+    # Entries carry no device id of their own; the group names the faucet.
+    assert parse_faucet_experiences(
+        {"faucetExperienceList": [group("sen-other", other), group(DEVICE_ID, mine)]},
+        DEVICE_ID,
+    ) == [SensatePreset("m", "Mine", 0.5)]
+    # Like the app, the first group if none names the faucet.
+    assert parse_faucet_experiences(
+        {"faucetExperienceList": [group("sen-other", other)]}, DEVICE_ID
+    ) == [SensatePreset("o", "Other", 1.0)]
+    # The amount the app shows stands in for a missing dispenseAmount.
+    assert parse_faucet_experiences(
+        {
+            "faucetExperienceList": [
+                group(
+                    DEVICE_ID,
+                    {"experienceId": "c", "title": "Two", "displayQuantity": "2 Cups"},
+                )
+            ]
+        },
+        DEVICE_ID,
+    ) == [SensatePreset("c", "Two", 2 * 0.2365880012512207)]
+    assert parse_faucet_experiences({"faucetExperienceList": []}, DEVICE_ID) == []
+    assert parse_faucet_experiences({"sensateExperiences": []}, DEVICE_ID) is None
+    assert (
+        parse_faucet_experiences(
+            {"faucetExperienceList": [{"deviceId": DEVICE_ID}]}, DEVICE_ID
+        )
+        is None
+    )
+
+
+async def test_faucet_preset_list_preferred(
+    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
+) -> None:
+    """The faucet's own list, as the app's faucet screen reads it, comes first."""
+    kohler.faucet_presets = [PRESETS[1]]
+    await _setup(hass, config_entry, kohler, PRESETS)
+    assert hass.states.get(PRESET).attributes["options"] == ["Kettle"]
+    assert config_entry.runtime_data.preset_source == "faucet-experience"
+
+
+@pytest.mark.parametrize("faucet_presets", [None, []])
+async def test_account_preset_list_stands_in(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    kohler: FakeKohler,
+    faucet_presets: list | None,
+) -> None:
+    """If the faucet's list is unavailable or empty, the account's is used."""
+    kohler.faucet_presets = faucet_presets
+    await _setup(hass, config_entry, kohler, PRESETS)
+    assert hass.states.get(PRESET).attributes["options"] == ["Pasta pot", "Kettle"]
+    assert config_entry.runtime_data.preset_source == "customer-experience"
 
 
 def test_preset_labels() -> None:
@@ -255,6 +320,27 @@ async def test_preset_outside_dispense_range(
         await _press(hass)
     assert err.value.translation_key == "preset_out_of_range"
     assert kohler.commands == []
+
+
+async def test_largest_app_preset_dispenses(
+    hass: HomeAssistant, config_entry: MockConfigEntry, kohler: FakeKohler
+) -> None:
+    """A 3-gallon preset, as the app saves it after its single-precision math."""
+    await _setup(
+        hass,
+        config_entry,
+        kohler,
+        [
+            {
+                "experienceId": "big",
+                "title": "Stock pot",
+                "dispenseAmount": 11.356235504150391,
+                "displayQuantity": "3 Gallons",
+            }
+        ],
+    )
+    await _press(hass)
+    assert _dispensed(kohler) == [11.3562]
 
 
 async def test_settings_listed_under_configuration(

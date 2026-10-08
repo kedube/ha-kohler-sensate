@@ -8,9 +8,9 @@ from functools import partial
 import hashlib
 import json
 import logging
+import math
 import time
 from typing import TYPE_CHECKING, Any
-import uuid
 
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
@@ -22,6 +22,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .api import (
+    FirmwareInfo,
     SensateApi,
     SensateApiError,
     SensateAuthError,
@@ -32,14 +33,22 @@ from .const import (
     COMMAND_FOLLOW_UP,
     CONF_DEVICE_ID,
     CONF_MAX_RUN_MINUTES,
+    CONF_SKU,
     CONFIG_REFRESH_INTERVAL,
     DEFAULT_MAX_RUN_MINUTES,
+    DEFAULT_SKU,
     DISPENSE_MAX,
+    DISPENSE_MAX_ML,
     DISPENSE_SETTLE,
+    DISPENSE_SLOWEST_FLOW,
     DOMAIN,
+    FAUCET_SKUS,
+    FIRMWARE_CHECK_INTERVAL,
+    HANDLE_CLOSED,
     ISSUE_API_CHANGED,
     ISSUE_FAUCET_NOT_FOUND,
     MAX_CLEARED_LEAKS,
+    PROGRESS_DOWNLOADING,
     PUSH_GRACE,
     REJECTIONS_BEFORE_ISSUE,
     RETRY_AFTER_MAX,
@@ -48,6 +57,9 @@ from .const import (
     SCAN_INTERVAL_IDLE,
     SCAN_INTERVAL_PUSH,
     SCAN_INTERVAL_PUSH_ACTIVE,
+    STATUS_FIRMWARE_UPDATING,
+    STATUS_NOT_DISPENSED,
+    STATUS_OFFLINE,
     STORAGE_KEY,
     STORAGE_VERSION,
     USAGE_HISTORY_START,
@@ -62,9 +74,11 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# Kohler doesn't document leak events; if one carries an id, use it so the
-# event stays cleared even if Kohler later adds fields to it.
+# Leak events are {"leakDetectionTime": <epoch seconds>}. Before that was
+# known, events were keyed by one of these ids or by a hash of the whole
+# event; those keys are still honored, so events cleared then stay cleared.
 _LEAK_ID_KEYS = ("id", "eventId", "leakId")
+_LEAK_TIME = "leakDetectionTime"
 
 # Only statuses known for certain count. Anything else is "unknown", recorded
 # in diagnostics so it can be added here.
@@ -73,10 +87,19 @@ STATUS_ON = frozenset({"on"})
 # Fields whose values are recorded for diagnostics.
 TRACKED_FIELDS = ("status", "progress", "handleState")
 AUTO_OFF_RETRY = 60
+# The dispense timer fires this long after the limit, so float rounding of the
+# deadline can't leave a dispense counted as running when it fires.
+_DISPENSE_TIMER_SLACK = 1.0
+# Kohler statusCodes that have their own message for a refused command.
+_REFUSALS = {
+    STATUS_OFFLINE: "faucet_offline",
+    STATUS_FIRMWARE_UPDATING: "firmware_updating",
+    STATUS_NOT_DISPENSED: "not_dispensed",
+}
 
 
 def leak_fingerprint(event: Any) -> str:
-    """Return a stable identifier for a leak event of unknown shape."""
+    """Return the key that versions before 0.10 used for a leak event."""
     if isinstance(event, dict):
         for key in _LEAK_ID_KEYS:
             if event.get(key) not in (None, ""):
@@ -85,18 +108,40 @@ def leak_fingerprint(event: Any) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-def _dispensing(state: dict[str, Any]) -> bool:
-    progress = state.get("progress")
-    # The Sensate leaves this at "NotStarted", even mid-dispense, so dispenses
-    # are tracked from commands and the feed instead. Kept for any firmware
-    # that does report "…InProgress".
-    return isinstance(progress, str) and progress.lower().endswith("inprogress")
+def leak_time(event: Any) -> float | None:
+    """When a leak event was detected, in epoch seconds."""
+    value = event.get(_LEAK_TIME) if isinstance(event, dict) else None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        return None
+    # Seconds, as the app reads it; tolerate milliseconds.
+    return value / 1000 if value > 1e11 else float(value)
+
+
+def leak_key(event: Any) -> str:
+    """A leak event's identity: its detection time, else its old key."""
+    if leak_time(event) is not None:
+        return f"{_LEAK_TIME}:{event[_LEAK_TIME]}"
+    return leak_fingerprint(event)
+
+
+def dispense_limit(liters: float | None) -> float:
+    """Seconds after which a dispense whose end is never reported counts as over.
+
+    ``None`` (an amount that isn't known) allows for the largest dispense.
+    """
+    if liters is None:
+        liters = DISPENSE_MAX_ML / 1000
+    return max(
+        DISPENSE_MAX.total_seconds(),
+        float(math.ceil(60 + liters / DISPENSE_SLOWEST_FLOW * 60)),
+    )
 
 
 def _water_running(state: dict[str, Any]) -> bool | None:
-    """True/False for statuses known for certain, None for anything else."""
-    if _dispensing(state):
-        return True
+    """True/False for statuses known for certain, None for anything else.
+
+    ``progress`` isn't consulted: it's the firmware download, not the water.
+    """
     status = state.get("status")
     if not isinstance(status, str):
         return None
@@ -119,9 +164,9 @@ def preset_labels(presets: Iterable[SensatePreset]) -> dict[str, SensatePreset]:
     return labels
 
 
-def _push_signature(state: dict[str, Any]) -> tuple[bool | None, bool]:
-    """The changes instant updates must announce: water running, dispensing."""
-    return _water_running(state), _dispensing(state)
+def _push_signature(state: dict[str, Any]) -> bool | None:
+    """The change instant updates must announce: water on or off."""
+    return _water_running(state)
 
 
 class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -147,6 +192,10 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.api = api
         # Entries created by v0.1 only stored the device id as the unique id.
         self.device_id: str = entry.data.get(CONF_DEVICE_ID) or entry.unique_id or ""
+        # Sent with every command. Entries created before 0.10 didn't store
+        # it; the faucet state reports it too.
+        self.sku: str = entry.data.get(CONF_SKU) or DEFAULT_SKU
+        self._sku_known = bool(entry.data.get(CONF_SKU))
         self.profile: UnitProfile = get_profile(hass, entry)
         self.max_run_minutes: int = int(
             entry.options.get(CONF_MAX_RUN_MINUTES, DEFAULT_MAX_RUN_MINUTES)
@@ -155,8 +204,13 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._config_fetched_at: float | None = None
         self._config_due = False
         self.presets: dict[str, SensatePreset] = {}
+        self.preset_source: str | None = None
         # The preset id chosen in the Preset select; see chosen_preset.
         self.preset_choice: str | None = None
+        # Kohler's firmware check; None until it has answered.
+        self.firmware: FirmwareInfo | None = None
+        self._firmware_checked_at: float | None = None
+        self._firmware_due = False
         self.connection_state: str | None = None
         self.last_connected: Any = None
         self.seen_values: dict[str, set[str]] = {
@@ -173,13 +227,15 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Dispenses: one Home Assistant started (until the faucet reports the
         # water off) and a preset run from the app (until the feed says so).
         self._dispense_started: float | None = None
+        self._dispense_limit = DISPENSE_MAX.total_seconds()
         self._dispense_seen_on = False
         self._dispense_feed_on = False
         self._dispense_preset: str | None = None
         self._preset_since: float | None = None
+        self._preset_limit = DISPENSE_MAX.total_seconds()
         self._app_preset: str | None = None
         self._water_was_running: bool | None = None
-        # Ends a dispense whose end never arrives, at DISPENSE_MAX.
+        # Ends a dispense whose end never arrives, at its dispense_limit().
         self._dispense_timer: CALLBACK_TYPE | None = None
         # Water usage in liters: everything Kohler has counted, and today.
         self.usage_total_liters: float | None = None
@@ -201,6 +257,11 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             hass, STORAGE_VERSION, STORAGE_KEY.format(entry_id=entry.entry_id)
         )
         self._cleared_leaks: list[str] = []
+        # Leak events detected up to this time (epoch seconds) are cleared,
+        # even if Kohler adds them to the history after "Clear leak alert".
+        self._leaks_cleared_through: float | None = None
+        # A real-time leak alert from the feed, until cleared (epoch seconds).
+        self._leak_alert_at: float | None = None
         self._push_identity: str | None = None
         # Safety auto-off: wall-clock deadline (persisted) and its timer.
         self._auto_off_at: float | None = None
@@ -210,6 +271,12 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_setup(self) -> None:
         stored = await self._store.async_load() or {}
         self._cleared_leaks = list(stored.get("cleared_leaks", []))
+        for key, attr in (
+            ("leaks_cleared_through", "_leaks_cleared_through"),
+            ("leak_alert_at", "_leak_alert_at"),
+        ):
+            if isinstance(value := stored.get(key), (int, float)):
+                setattr(self, attr, float(value))
         self._push_identity = stored.get("push_identity")
         # A reload or restart must not lose the safety limit.
         if isinstance(deadline := stored.get("auto_off_at"), (int, float)):
@@ -220,6 +287,8 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         await self._store.async_save(
             {
                 "cleared_leaks": self._cleared_leaks,
+                "leaks_cleared_through": self._leaks_cleared_through,
+                "leak_alert_at": self._leak_alert_at,
                 "push_identity": self._push_identity,
                 "auto_off_at": self._auto_off_at,
             }
@@ -278,6 +347,8 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._polled_at = polled_at
         self.connection_state = snapshot.connection_state
         self.last_connected = snapshot.last_connected
+        if not self._sku_known and snapshot.sku in FAUCET_SKUS:
+            self.sku = snapshot.sku
         self._record_values(state)
         self._note_water(_water_running(state), from_feed=False)
         await self._async_refresh_config()
@@ -330,17 +401,40 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if self._config_fetched_at is None:
                 return
         try:
-            self.presets = {
-                p.preset_id: p for p in await self.api.async_get_presets(self.device_id)
-            }
+            presets, self.preset_source = await self.api.async_get_presets(
+                self.device_id
+            )
         except SensateAuthError as err:
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN, translation_key="auth_failed"
             ) from err
         except SensateError as err:
             _LOGGER.debug("Could not refresh Konnect presets: %s", err)
+        else:
+            self.presets = {p.preset_id: p for p in presets}
+        await self._async_check_firmware(now)
         self._config_fetched_at = now
         self._config_due = False
+
+    async def _async_check_firmware(self, now: float) -> None:
+        """Ask Kohler about newer firmware now and then; failures keep the old answer."""
+        if (
+            not self._firmware_due
+            and self._firmware_checked_at is not None
+            and now - self._firmware_checked_at
+            < FIRMWARE_CHECK_INTERVAL.total_seconds()
+        ):
+            return
+        self._firmware_checked_at = now
+        self._firmware_due = False
+        try:
+            self.firmware = await self.api.async_get_firmware(self.device_id)
+        except SensateAuthError as err:
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN, translation_key="auth_failed"
+            ) from err
+        except SensateError as err:
+            _LOGGER.debug("Could not check for faucet firmware: %s", err)
 
     async def _async_refresh_usage(self) -> None:
         """Refresh water usage now and then, and soon after the water stops."""
@@ -406,11 +500,11 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._dispense_preset = None
         self._water_was_running = running
 
-    def _start_dispense_timer(self) -> None:
+    def _start_dispense_timer(self, seconds: float) -> None:
         if self._dispense_timer is not None:
             self._dispense_timer()
         self._dispense_timer = async_call_later(
-            self.hass, DISPENSE_MAX, self._async_dispense_timeout
+            self.hass, seconds + _DISPENSE_TIMER_SLACK, self._async_dispense_timeout
         )
 
     @callback
@@ -424,11 +518,31 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._preset_since = time.monotonic() if event.preset_on else None
             self._app_preset = event.preset if event.preset_on else None
             if event.preset_on:
-                self._start_dispense_timer()
+                preset = self.presets.get(event.preset_id or "") or (
+                    self.find_preset(event.preset) if event.preset else None
+                )
+                self._preset_limit = dispense_limit(preset.liters if preset else None)
+                self._start_dispense_timer(self._preset_limit)
         if event.status is not None:
             status = event.status.lower()
             if status in STATUS_ON or status in STATUS_OFF:
                 self._note_water(status in STATUS_ON, from_feed=True)
+        # Like the app, take the feed's water and handle state at once; the
+        # re-read that follows confirms it.
+        if self.data is not None and (event.status or event.handle):
+            self.data = {
+                **self.data,
+                **({"status": event.status} if event.status else {}),
+                **({"handleState": event.handle} if event.handle else {}),
+            }
+        if event.leak:
+            self._leak_alert_at = time.time()
+            self.config_entry.async_create_task(
+                self.hass, self._async_save(), "kohler_sensate leak alert"
+            )
+        if event.firmware is not None:
+            # An install ended: read the new version and check again.
+            self._firmware_due = self._config_due = True
         self.async_update_listeners()
 
     # --- repairs --------------------------------------------------------------
@@ -481,19 +595,24 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_dispense(self, liters: float, preset: str | None = None) -> None:
         """Dispense ``liters`` (for ``preset``, if any) and refresh the state."""
         await self._async_command(
-            lambda: self.api.async_dispense(self.device_id, liters)
+            lambda: self.api.async_dispense(self.device_id, liters, self.sku),
+            starts_water=True,
         )
         self.last_dispense_liters = liters
         self._dispense_started = time.monotonic()
+        self._dispense_limit = dispense_limit(liters)
         self._dispense_seen_on = self._dispense_feed_on = False
         self._dispense_preset = preset
-        self._start_dispense_timer()
+        self._start_dispense_timer(self._dispense_limit)
         self.async_update_listeners()
         await self.async_request_refresh()
 
     async def async_set_water(self, on: bool) -> None:
         """Turn the water on or off and refresh the state."""
-        await self._async_command(lambda: self.api.async_set_water(self.device_id, on))
+        await self._async_command(
+            lambda: self.api.async_set_water(self.device_id, on, self.sku),
+            starts_water=on,
+        )
         if on and self.max_run_minutes > 0:
             self._seen_running = False
             self._auto_off_at = time.time() + self.max_run_minutes * 60
@@ -503,13 +622,23 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             await self._async_cancel_auto_off()
         await self.async_request_refresh()
 
-    async def _async_command(self, send: Callable[[], Awaitable[None]]) -> None:
+    def _refusal(self, key: str) -> HomeAssistantError:
+        return HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key=key,
+            translation_placeholders={"name": self.config_entry.title},
+        )
+
+    async def _async_command(
+        self, send: Callable[[], Awaitable[None]], *, starts_water: bool
+    ) -> None:
         if not self.faucet_online:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="faucet_offline",
-                translation_placeholders={"name": self.config_entry.title},
-            )
+            raise self._refusal("faucet_offline")
+        # The Konnect app refuses these too. Turning water off is never refused.
+        if starts_water and self.handle_closed:
+            raise self._refusal("handle_closed")
+        if starts_water and self.firmware_downloading:
+            raise self._refusal("firmware_updating")
         try:
             await send()
         except SensateAuthError as err:
@@ -524,6 +653,12 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     translation_key="rate_limited",
                     translation_placeholders={"seconds": str(round(err.retry_after))},
                 ) from err
+            if (key := _REFUSALS.get(err.code or "")) is not None:
+                raise self._refusal(key) from err
+            if err.status == 403:
+                # Kohler accepts commands with the password sign-in for
+                # faucets, but not for Anthem showers; it may extend that.
+                raise self._refusal("command_forbidden") from err
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="command_failed",
@@ -557,7 +692,7 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.max_run_minutes,
         )
         try:
-            await self.api.async_set_water(self.device_id, False)
+            await self.api.async_set_water(self.device_id, False, self.sku)
         except SensateError as err:
             _LOGGER.warning(
                 "Could not turn off the water on %s: %s. Trying again in a minute",
@@ -573,22 +708,53 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # --- leaks -----------------------------------------------------------------
 
     async def async_clear_leaks(self) -> None:
-        """Mark every leak event Kohler currently reports as cleared."""
-        new = sorted({leak_fingerprint(e) for e in self.active_leaks})
-        if not new:
+        """Mark the leak alert and every leak event Kohler reports as cleared."""
+        active = self.active_leaks
+        if not active and self._leak_alert_at is None:
             return
+        new = sorted({leak_key(e) for e in active})
         self._cleared_leaks = (self._cleared_leaks + new)[-MAX_CLEARED_LEAKS:]
+        # Also covers an alert's event if it reaches the history only later.
+        self._leaks_cleared_through = max(
+            time.time(),
+            *(t for e in active if (t := leak_time(e)) is not None),
+            self._leaks_cleared_through or 0.0,
+        )
+        self._leak_alert_at = None
         await self._async_save()
         self.async_update_listeners()
 
     # --- instant updates ------------------------------------------------------
 
-    async def async_push_identity(self) -> str:
-        """Return the persisted instant-updates identity, creating it once."""
-        if not self._push_identity:
-            self._push_identity = uuid.uuid4().hex[:16]
-            await self._async_save()
+    @property
+    def push_identity(self) -> str | None:
+        """The identity this faucet's feed registers under, once it has one."""
         return self._push_identity
+
+    async def async_use_push_identity(self, identity: str) -> None:
+        """Record the identity of the feed this faucet joined.
+
+        The faucets on an account share one feed. A faucet that had its own,
+        as before 0.10, unregisters it so it doesn't linger on the account.
+        """
+        previous, self._push_identity = self._push_identity, identity
+        if previous == identity:
+            return
+        await self._async_save()
+        if previous:
+            self.config_entry.async_create_task(
+                self.hass,
+                self._async_unregister_push(previous),
+                "kohler_sensate unregister",
+            )
+
+    async def _async_unregister_push(self, identity: str) -> None:
+        try:
+            await self.api.async_unregister_push(identity)
+        except SensateError as err:
+            _LOGGER.debug(
+                "Could not remove an old instant-updates registration: %s", err
+            )
 
     @callback
     def async_push_activity(
@@ -662,11 +828,46 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         history = self.config.get("leakDetectionHistory")
         return history if isinstance(history, list) else []
 
+    def _leak_cleared(self, event: Any, cleared: set[str]) -> bool:
+        if leak_key(event) in cleared or leak_fingerprint(event) in cleared:
+            return True
+        detected = leak_time(event)
+        return (
+            detected is not None
+            and self._leaks_cleared_through is not None
+            and detected <= self._leaks_cleared_through
+        )
+
     @property
     def active_leaks(self) -> list[Any]:
         """Leak events that haven't been cleared in Home Assistant."""
         cleared = set(self._cleared_leaks)
-        return [e for e in self.leak_history if leak_fingerprint(e) not in cleared]
+        return [e for e in self.leak_history if not self._leak_cleared(e, cleared)]
+
+    @property
+    def leak_alert(self) -> bool:
+        """The feed reported a leak that hasn't been cleared."""
+        return self._leak_alert_at is not None
+
+    @property
+    def last_leak_at(self) -> datetime | None:
+        """When the most recent leak was detected, by the history or the feed."""
+        times = [t for e in self.leak_history if (t := leak_time(e)) is not None]
+        if self._leak_alert_at is not None:
+            times.append(self._leak_alert_at)
+        return dt_util.utc_from_timestamp(max(times)) if times else None
+
+    @property
+    def handle_closed(self) -> bool:
+        """The manual handle is closed, which blocks remote water."""
+        handle = (self.data or {}).get("handleState")
+        return isinstance(handle, str) and handle.lower() == HANDLE_CLOSED
+
+    @property
+    def firmware_downloading(self) -> bool:
+        """The faucet is downloading firmware, which blocks remote water."""
+        progress = (self.data or {}).get("progress")
+        return isinstance(progress, str) and progress.lower() == PROGRESS_DOWNLOADING
 
     @property
     def about(self) -> dict[str, Any]:
@@ -679,14 +880,12 @@ class SensateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def is_dispensing(self) -> bool:
         now = time.monotonic()
-        limit = DISPENSE_MAX.total_seconds()
         return (
-            _dispensing(self.data or {})
-            or (
-                self._dispense_started is not None
-                and now - self._dispense_started < limit
-            )
-            or (self._preset_since is not None and now - self._preset_since < limit)
+            self._dispense_started is not None
+            and now - self._dispense_started < self._dispense_limit
+        ) or (
+            self._preset_since is not None
+            and now - self._preset_since < self._preset_limit
         )
 
     @property
