@@ -19,6 +19,8 @@ directly, signing in with your normal Konnect email and password.
 > This is not affiliated with or endorsed by Kohler. It relies on Kohler's
 > undocumented cloud API, which can change without notice.
 
+![A Sensate faucet's device page in Home Assistant, with its dispense buttons, Water switch, sensors and recent activity](https://raw.githubusercontent.com/kedube/ha-kohler-sensate/main/docs/images/device.png)
+
 ## Features
 
 - **Water switch**: turn the water on and off.
@@ -99,6 +101,10 @@ Or add it by hand:
 
 3. If the account has more than one Sensate, pick the faucet to add. Repeat
    the steps to add the others.
+
+Each faucet appears as a device on the integration's page:
+
+![The Kohler Sensate Faucet integration page, listing one faucet device](https://raw.githubusercontent.com/kedube/ha-kohler-sensate/main/docs/images/integration.png)
 
 The faucet's name comes from the Konnect app (for example *Kitchen*), so its
 entities are named like `button.kitchen_dispense_250_ml`.
