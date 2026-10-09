@@ -1,4 +1,9 @@
-# Kohler Sensate for Home Assistant
+<p align="center">
+<h1 align="center">New integration repo: https://github.com/kedube/ha-kohler-konnect</h1>
+</p>
+<hr>
+
+# [DEPRECATED] (Unofficial) Home Assistant Integration for Kohler Sensate Faucets
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 [![GitHub release](https://img.shields.io/github/v/release/kedube/ha-kohler-sensate)](https://github.com/kedube/ha-kohler-sensate/releases)
